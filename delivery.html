@@ -1,0 +1,845 @@
+<!DOCTYPE html><html lang="id"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0" name="viewport">
+<meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control">
+<meta content="no-cache" http-equiv="Pragma">
+<meta content="0" http-equiv="Expires">
+<title>SM Catering — Delivery</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#001a72"/>
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32"/>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="SMC System"/>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;700&amp;family=Manrope:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "primary": "#000a3f",
+          "primary-container": "#001a72",
+          "secondary": "#775a19",
+          "secondary-container": "#fed488",
+          "surface": "#f8f9fa",
+          "on-surface": "#191c1d",
+          "outline": "#757683",
+          "outline-variant": "#c5c5d3",
+          "sm-blue": "#001a72",
+          "sm-blue-dark": "#000d3f",
+          "sm-gold": "#C8A24B",
+        },
+        fontFamily: {
+          serif: ['"Libre Caslon Text"', 'serif'],
+          sans: ['Manrope', 'sans-serif'],
+        },
+        borderRadius: {
+          'DEFAULT': '0.25rem',
+          'lg': '0.5rem',
+          'xl': '0.75rem',
+          '2xl': '1rem',
+          '3xl': '1.5rem',
+          'full': '9999px'
+        },
+      },
+    },
+  }
+</script>
+<style>
+  :root {
+    --sm-blue: #001a72;
+    --sm-blue-dark: #000a3f;
+    --sm-gold: #C8A24B;
+    --sm-gold-hover: #b18d3e;
+    --surface: #f8f9fa;
+  }
+  body {
+    background-color: var(--surface);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card-premium {
+    background: white;
+    border: 1px solid #e1e3e4;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    border-radius: 1rem;
+    transition: all 0.2s ease;
+  }
+  .card-premium:active {
+    transform: scale(0.98);
+  }
+
+  .route-card {
+    background: linear-gradient(135deg, var(--sm-blue), var(--sm-blue-dark));
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 20px -4px rgba(0,26,114,0.25);
+  }
+  .route-card:active {
+    transform: scale(0.97);
+  }
+  .route-number {
+    position: absolute;
+    right: -10px;
+    bottom: -20px;
+    font-size: 110px;
+    font-family: 'Libre Caslon Text', serif;
+    font-weight: 700;
+    color: white;
+    opacity: 0.1;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .route-content {
+    position: relative;
+    z-index: 1;
+  }
+  
+  .slider-container {
+    position: relative;
+    width: 100%;
+    height: 64px;
+    background: #edeeef;
+    border-radius: 32px;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    overflow: hidden;
+    user-select: none;
+    border: 1px solid #e1e3e4;
+    margin-top: 24px;
+  }
+  .slider-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: #454651;
+    pointer-events: none;
+    z-index: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .slider-handle {
+    position: absolute;
+    height: 56px;
+    width: 56px;
+    background: var(--sm-gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: grab;
+    z-index: 2;
+    box-shadow: 0 4px 10px rgba(200, 162, 75, 0.3);
+    transition: transform 0.1s ease-out;
+  }
+  .slider-bg {
+    position: absolute;
+    height: 100%;
+    width: 0;
+    background: var(--sm-blue);
+    left: 0;
+    top: 0;
+    border-radius: 32px;
+    transition: width 0.1s ease-out;
+  }
+  .slider-container.completed .slider-text { color: white; }
+  .slider-container.disabled { opacity: 0.6; pointer-events: none; }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-up { animation: fadeSlideUp 0.4s ease forwards; }
+
+  input[type="number"], input[type="text"] {
+    border: 1px solid #c5c5d3;
+    border-radius: 0.75rem;
+    padding: 10px 16px;
+    font-family: 'Manrope', sans-serif;
+  }
+  input:focus {
+    border-color: var(--sm-blue);
+    box-shadow: 0 0 0 2px rgba(0, 26, 114, 0.1);
+    outline: none;
+  }
+</style>
+</head>
+<body class="font-sans text-on-surface">
+<header class="bg-sm-blue text-white sticky top-0 z-50 shadow-lg">
+  <div class="max-w-md mx-auto px-5 py-4 flex items-center justify-between">
+    <a href="profil.html" class="relative w-10 h-10 rounded-full border-2 border-sm-gold/50 flex items-center justify-center bg-white/10 overflow-hidden active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-white">person</span>
+    </a>
+    <div class="flex flex-col items-center">
+      <h1 class="text-sm font-bold leading-tight" id="nama-user">Memuat...</h1>
+      <p class="text-[10px] text-white/70 uppercase tracking-widest font-semibold" id="role-user"></p>
+    </div>
+    <button class="w-9 h-9 flex items-center justify-center rounded-full border border-white/20 text-white bg-white/5 active:opacity-70" onclick="handleGlobalBack()" id="btn-global-back">
+      <span class="material-symbols-outlined text-[24px]">arrow_back</span>
+    </button>
+  </div>
+  <div class="bg-sm-blue-dark px-4 py-2 text-center shadow-inner">
+    <div class="flex items-center justify-center gap-2">
+      <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+      <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80">Sistem Delivery Aktif</span>
+    </div>
+  </div>
+</header>
+<main class="max-w-md mx-auto px-5 pb-20 pt-6"><div class="hidden mb-4" id="menu-link">
+<a class="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest" href="index.html">
+<span class="material-symbols-outlined text-sm">dashboard</span>
+Kembali ke Menu Utama
+</a>
+</div><div class="mb-6 flex items-center justify-between border-b border-slate-200 pb-4">
+<div>
+<h2 class="text-xs font-bold text-primary uppercase tracking-widest">Konfirmasi Delivery</h2>
+<div class="text-sm font-medium text-slate-500 mt-0.5" id="route-context-display">Pilih Rute</div>
+</div>
+<div class="bg-primary/5 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider hidden" id="route-tag-new">
+    Rute #
+  </div>
+</div>
+<!-- Rute Selection Screen -->
+<div class="animate-fade-up" id="screen-route">
+<div class="grid gap-4" id="route-grid">
+<div class="h-32 bg-slate-100 rounded-2xl animate-pulse"></div>
+<div class="h-32 bg-slate-100 rounded-2xl animate-pulse"></div>
+</div>
+</div>
+<!-- Stops List Screen -->
+<div class="hidden animate-fade-up" id="screen-stops">
+<div class="flex items-center justify-between mb-4 hidden">
+<div class="bg-primary/5 text-primary px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider" id="route-tag">
+        Rute #
+      </div>
+</div>
+<h2 class="font-serif text-2xl text-sm-blue font-bold mb-1">Daftar Stop</h2>
+<p class="text-slate-500 text-sm mb-6">Kelola pengantaran untuk setiap lokasi.</p>
+<div class="space-y-4" id="stops-list"></div>
+</div>
+<!-- Delivery Form Screen -->
+<div class="hidden animate-fade-up" id="screen-form">
+<div class="space-y-6" id="form-container">
+<!-- Form Content Injected by JS -->
+</div>
+</div>
+</main>
+<!-- Popup Notification -->
+<div class="fixed inset-0 bg-primary/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 hidden" id="popup-overlay">
+<div class="bg-white rounded-3xl w-full max-w-xs p-8 text-center shadow-2xl">
+<div class="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+<span class="material-symbols-outlined text-3xl">check_circle</span>
+</div>
+<h3 class="font-serif text-xl text-sm-blue font-bold mb-2">Berhasil!</h3>
+<p class="text-slate-500 text-sm mb-6" id="popup-message">Laporan delivery telah disimpan dalam sistem.</p>
+<button class="w-full bg-sm-blue text-white py-3.5 rounded-xl font-bold transition-all active:scale-95" onclick="closePopup()">Selesai</button>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="supabase-client.js"></script>
+<script src="auth-guard.js"></script>
+<script>
+  const CLOUDINARY_CLOUD_NAME = 'w21mapdh';
+  const CLOUDINARY_UPLOAD_PRESET = 'smc-management-system';
+
+  let currentProfile = null;
+  let selectedRoute = null;
+  let currentGroups = [];
+  let activeGroup = null;
+  let selectedPhotoBlob = null;
+  let receiverStatus = null;
+  let currentActiveScreenId = 'screen-route';
+
+  const namaMeal = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
+  const namaProduk = { tahanan: 'Tahanan', anggota: 'Anggota' };
+
+  function todayStr() {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  }
+
+  function isMitraHomeScreen() {
+    return currentProfile && currentProfile.role === 'produksi_delivery' && currentActiveScreenId === 'screen-stops';
+  }
+
+  function handleGlobalBack() {
+    if (currentActiveScreenId === 'screen-form') {
+      backToStops();
+    } else if (currentActiveScreenId === 'screen-stops' && !isMitraHomeScreen()) {
+      showScreen('screen-route');
+    } else {
+      window.location.href = 'index.html';
+    }
+  }
+
+  function updateBackButton() {
+    const btn = document.getElementById('btn-global-back');
+    if (currentActiveScreenId === 'screen-route' || isMitraHomeScreen()) {
+      btn.innerHTML = '<span class="material-symbols-outlined text-[24px]">home</span>';
+    } else {
+      btn.innerHTML = '<span class="material-symbols-outlined text-[24px]">arrow_back</span>';
+    }
+  }
+
+  function showScreen(id) {
+    currentActiveScreenId = id;
+    document.querySelectorAll('main > div').forEach(el => el.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+    window.scrollTo(0, 0);
+    updateBackButton();
+  }
+
+  async function loadRoutes() {
+    const { data, error } = await supabaseClient.from('routes').select('id, nama, is_mitra').order('id');
+    if (error) {
+      document.getElementById('route-grid').innerHTML = '<div class="p-4 bg-red-50 text-red-600 rounded-xl text-sm">Gagal memuat rute: ' + error.message + '</div>';
+      return;
+    }
+    
+    const filteredRoutes = currentProfile.role === 'delivery' ? data.filter(r => !r.is_mitra) : data;
+    const routeIds = filteredRoutes.map(r => r.id);
+    
+    const { data: allLocations } = await supabaseClient.from('locations').select('nama, route_id').in('route_id', routeIds.length > 0 ? routeIds : [0]);
+    const locNamesByRoute = {};
+    (allLocations || []).forEach(l => {
+      if (!locNamesByRoute[l.route_id]) locNamesByRoute[l.route_id] = [];
+      locNamesByRoute[l.route_id].push(l.nama);
+    });
+
+    const grid = document.getElementById('route-grid');
+    grid.innerHTML = '';
+    filteredRoutes.forEach(route => {
+      const angkaMatch = route.nama.match(/\d+/);
+      const angka = angkaMatch ? angkaMatch[0] : route.nama.charAt(0);
+      const locList = (locNamesByRoute[route.id] || []).slice(0, 3).join(', ');
+      const locCount = (locNamesByRoute[route.id] || []).length;
+
+      const card = document.createElement('div');
+      card.className = 'route-card';
+      card.onclick = () => pilihRute(route);
+      card.innerHTML = `
+        <div class="route-number">#${angka}</div>
+        <div class="route-content">
+          <div class="flex items-center justify-between mb-2">
+             <span class="text-[10px] font-bold bg-white/20 text-white px-3 py-1 rounded-full uppercase tracking-widest">${locCount} Lokasi</span>
+             <span class="material-symbols-outlined text-white/50 text-[20px]">arrow_forward_ios</span>
+          </div>
+          <h3 class="font-bold text-white text-xl font-serif mb-1">${route.nama}</h3>
+          <p class="text-[12px] text-white/70 line-clamp-1">${locList}${locCount > 3 ? '...' : ''}</p>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  async function pilihRute(route) {
+    selectedRoute = route;
+    document.getElementById('route-tag').textContent = 'Rute ' + route.nama;
+    showScreen('screen-stops');
+    document.getElementById('stops-list').innerHTML = `
+      <div class="py-12 flex flex-col items-center">
+        <div class="w-10 h-10 border-4 border-sm-blue/10 border-t-sm-blue rounded-full animate-spin"></div>
+        <p class="mt-4 text-sm text-slate-400 font-medium">Memuat rute...</p>
+      </div>`;
+    await loadStops();
+  }
+
+  async function loadStops() {
+    const tanggal = todayStr();
+    const { data: locations, error: locError } = await supabaseClient.from('locations').select('id, nama').eq('route_id', selectedRoute.id);
+    if (locError) {
+      document.getElementById('stops-list').innerHTML = '<div class="p-4 bg-red-50 text-red-600 rounded-xl text-sm">' + locError.message + '</div>';
+      return;
+    }
+
+    const locationIds = locations.map(l => l.id);
+    const locNameMap = {};
+    locations.forEach(l => { locNameMap[l.id] = l.nama; });
+
+    if (locationIds.length === 0) {
+      document.getElementById('stops-list').innerHTML = '<div class="text-center py-12 text-slate-400 text-sm">Tidak ada lokasi di rute ini.</div>';
+      return;
+    }
+
+    const { data: logsToday, error: logError } = await supabaseClient
+      .from('production_logs')
+      .select('id, location_id, product_type, meal_time, qty_produced, input_by_nama')
+      .eq('tanggal', tanggal)
+      .in('location_id', locationIds);
+
+    if (logError || logsToday.length === 0) {
+      document.getElementById('stops-list').innerHTML = `<div class="text-center py-12 px-6">
+        <span class="material-symbols-outlined text-4xl text-slate-200 mb-2">pending_actions</span>
+        <p class="text-slate-400 text-sm">${logError ? logError.message : 'Belum ada data produksi hari ini. Hubungi tim produksi.'}</p>
+      </div>`;
+      return;
+    }
+
+    const { data: deliveredLogs } = await supabaseClient.from('delivery_logs').select('production_log_id').in('production_log_id', logsToday.map(l => l.id));
+    const deliveredSet = new Set(deliveredLogs.map(d => d.production_log_id));
+    const pending = logsToday.filter(l => !deliveredSet.has(l.id));
+
+    const groups = {};
+    pending.forEach(item => {
+      const key = `${item.location_id}-${item.product_type}-${item.meal_time}`;
+      if (!groups[key]) {
+        groups[key] = {
+          location_id: item.location_id,
+          location_nama: locNameMap[item.location_id],
+          product_type: item.product_type,
+          meal_time: item.meal_time,
+          items: []
+        };
+      }
+      groups[key].items.push(item);
+    });
+
+    const urutanJadwal = { pagi: 0, siang: 1, malam: 2 };
+    currentGroups = Object.values(groups).sort((a, b) => {
+      const byNama = a.location_nama.localeCompare(b.location_nama);
+      return byNama !== 0 ? byNama : urutanJadwal[a.meal_time] - urutanJadwal[b.meal_time];
+    });
+
+    renderStops();
+  }
+
+  function renderStops() {
+    const container = document.getElementById('stops-list');
+    if (currentGroups.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-12 bg-white rounded-3xl border border-slate-100">
+          <div class="w-16 h-16 bg-sm-blue/5 text-sm-blue rounded-full flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined text-3xl">task_alt</span>
+          </div>
+          <h3 class="font-bold text-sm-blue mb-1">Rute Selesai!</h3>
+          <p class="text-slate-500 text-xs px-10">Semua pengantaran untuk rute ini telah selesai dikirim.</p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = '';
+    currentGroups.forEach((group, idx) => {
+      const totalQty = group.items.reduce((sum, i) => sum + i.qty_produced, 0);
+      const card = document.createElement('div');
+      card.className = 'card-premium p-5 flex items-center gap-4 cursor-pointer';
+      card.onclick = () => bukaForm(idx);
+      card.innerHTML = `
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="text-[9px] font-bold bg-primary/5 text-primary px-2 py-0.5 rounded uppercase tracking-widest">${namaMeal[group.meal_time]}</span>
+            <span class="text-[9px] font-bold bg-sm-gold/10 text-sm-gold px-2 py-0.5 rounded uppercase tracking-widest">${namaProduk[group.product_type]}</span>
+          </div>
+          <h3 class="font-bold text-sm-blue text-base">${group.location_nama}</h3>
+          <p class="text-xs text-slate-400 mt-1 font-medium">Total ${totalQty} porsi • ${group.items[0].input_by_nama || 'System'}</p>
+        </div>
+        <div class="text-slate-300">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function bukaForm(idx) {
+    activeGroup = currentGroups[idx];
+    selectedPhotoBlob = null;
+    receiverStatus = null;
+    showScreen('screen-form');
+    renderForm();
+  }
+
+  function backToStops() {
+    activeGroup = null;
+    showScreen('screen-stops');
+    loadStops();
+  }
+
+  function renderForm() {
+    const container = document.getElementById('form-container');
+    container.innerHTML = `
+      <div class="card-premium p-6">
+        <div class="mb-4">
+          <h2 class="font-serif text-2xl text-sm-blue font-bold">${activeGroup.location_nama}</h2>
+          <p class="text-[11px] text-slate-500 mt-1 uppercase tracking-[0.15em] font-bold">${namaProduk[activeGroup.product_type]} • ${namaMeal[activeGroup.meal_time]}</p>
+        </div>
+        <div class="space-y-4 pt-4 border-t border-slate-100" id="items-inputs"></div>
+      </div>
+
+      <div class="card-premium p-6">
+        <h3 class="text-xs font-bold text-primary mb-4 uppercase tracking-widest">Status Penerimaan</h3>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <button onclick="setReceiverStatus('diterima_langsung')" id="btn-ada" class="flex flex-col items-center gap-2 p-4 rounded-2xl border border-slate-200 transition-all text-slate-400 bg-white">
+            <span class="material-symbols-outlined">person</span>
+            <span class="text-[10px] font-bold uppercase">Diterima</span>
+          </button>
+          <button onclick="setReceiverStatus('tidak_ada_penerima')" id="btn-tidak" class="flex flex-col items-center gap-2 p-4 rounded-2xl border border-slate-200 transition-all text-slate-400 bg-white">
+            <span class="material-symbols-outlined">no_accounts</span>
+            <span class="text-[10px] font-bold uppercase">Tanpa Nama</span>
+          </button>
+        </div>
+        <div id="nama-penerima-wrap" class="hidden animate-fade-up">
+          <input type="text" id="input-nama-penerima" class="w-full text-sm" placeholder="Masukkan nama penerima...">
+        </div>
+      </div>
+
+      <div class="card-premium p-6">
+        <h3 class="text-xs font-bold text-primary mb-4 uppercase tracking-widest">Bukti Foto</h3>
+        <input type="file" accept="image/*" capture="environment" id="input-foto" class="hidden">
+        <div id="photo-action-area">
+          <button onclick="document.getElementById('input-foto').click()" class="w-full h-32 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 gap-2 active:bg-slate-50 transition-colors">
+            <span class="material-symbols-outlined text-3xl">photo_camera</span>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Ambil Foto Bukti</span>
+          </button>
+        </div>
+        <div id="photo-preview-wrap" class="hidden mt-2 relative">
+          <img id="preview-foto" class="w-full h-56 object-cover rounded-xl shadow-md">
+          <button onclick="document.getElementById('input-foto').click()" class="absolute bottom-3 right-3 bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+            <span class="material-symbols-outlined text-[20px]">refresh</span>
+          </button>
+        </div>
+        <div id="status-foto" class="text-[10px] mt-3 text-center uppercase font-bold tracking-tight"></div>
+      </div>
+
+      <div id="slider-root"></div>
+      <div id="submit-status" class="text-center text-[11px] font-bold uppercase tracking-widest mt-6 h-4"></div>
+    `;
+
+    const itemsContainer = document.getElementById('items-inputs');
+    activeGroup.items.forEach(item => {
+      const itemRow = document.createElement('div');
+      itemRow.className = 'flex items-center justify-between gap-4 py-2';
+      itemRow.innerHTML = `
+        <div class="flex-1">
+          <div class="text-sm font-bold text-slate-700">Produksi: ${item.qty_produced}</div>
+          <div id="retur-${item.production_log_id}" class="text-[10px] font-bold uppercase mt-1"></div>
+        </div>
+        <div class="w-24">
+          <input type="number" id="terima-${item.production_log_id}" placeholder="0" class="w-full text-center font-bold text-sm-blue text-lg" oninput="updateRetur('${item.production_log_id}', ${item.qty_produced})">
+        </div>
+      `;
+      itemsContainer.appendChild(itemRow);
+    });
+
+    initSlideToSubmit();
+    document.getElementById('input-foto').addEventListener('change', handleFotoSelected);
+  }
+
+  function updateRetur(logId, produced) {
+    const input = document.getElementById(`terima-${logId}`);
+    const returEl = document.getElementById(`retur-${logId}`);
+    const val = parseInt(input.value) || 0;
+    const diff = produced - val;
+    if (diff > 0) {
+      returEl.textContent = `Retur: ${diff}`;
+      returEl.className = 'text-[10px] font-bold uppercase mt-1 text-orange-600';
+    } else {
+      returEl.textContent = `Sesuai`;
+      returEl.className = 'text-[10px] font-bold uppercase mt-1 text-emerald-600';
+    }
+  }
+
+  function setReceiverStatus(status) {
+    receiverStatus = status;
+    const btnAda = document.getElementById('btn-ada');
+    const btnTidak = document.getElementById('btn-tidak');
+    const nameWrap = document.getElementById('nama-penerima-wrap');
+
+    if (status === 'diterima_langsung') {
+      btnAda.className = 'flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-primary bg-primary/5 text-primary transition-all';
+      btnTidak.className = 'flex flex-col items-center gap-2 p-4 rounded-2xl border border-slate-200 text-slate-400 bg-white transition-all';
+      nameWrap.classList.remove('hidden');
+    } else {
+      btnTidak.className = 'flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-primary bg-primary/5 text-primary transition-all';
+      btnAda.className = 'flex flex-col items-center gap-2 p-4 rounded-2xl border border-slate-200 text-slate-400 bg-white transition-all';
+      nameWrap.classList.add('hidden');
+    }
+  }
+
+  function handleFotoSelected(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    selectedPhotoBlob = file;
+    document.getElementById('photo-action-area').classList.add('hidden');
+    const previewWrap = document.getElementById('photo-preview-wrap');
+    const previewImg = document.getElementById('preview-foto');
+    previewImg.src = URL.createObjectURL(file);
+    previewWrap.classList.remove('hidden');
+    document.getElementById('status-foto').textContent = 'FOTO SIAP DIUPLOAD';
+    document.getElementById('status-foto').className = 'text-[10px] mt-3 text-center uppercase font-bold tracking-tight text-emerald-600';
+  }
+
+  function initSlideToSubmit() {
+    const root = document.getElementById('slider-root');
+    root.innerHTML = `
+      <div class="slider-container" id="slider-container">
+        <div class="slider-bg" id="slider-bg"></div>
+        <div class="slider-text">Geser untuk Submit</div>
+        <div class="slider-handle" id="slider-handle">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </div>
+      </div>
+    `;
+
+    const container = document.getElementById('slider-container');
+    const handle = document.getElementById('slider-handle');
+    const bg = document.getElementById('slider-bg');
+    let isDragging = false;
+    let startX = 0;
+    const maxSlide = container.clientWidth - handle.clientWidth - 8;
+
+    const onStart = (e) => {
+      isDragging = true;
+      startX = (e.type === 'touchstart' ? e.touches[0].clientX : e.clientX);
+      handle.style.transition = 'none';
+      bg.style.transition = 'none';
+    };
+
+    const onMove = (e) => {
+      if (!isDragging) return;
+      const currentX = (e.type === 'touchmove' ? e.touches[0].clientX : e.clientX);
+      let diff = currentX - startX;
+      if (diff < 0) diff = 0;
+      if (diff > maxSlide) diff = maxSlide;
+      
+      handle.style.transform = `translateX(${diff}px)`;
+      bg.style.width = `${diff + 30}px`;
+    };
+
+    const onEnd = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      const currentPos = parseInt(handle.style.transform.replace('translateX(', '').replace('px)', '')) || 0;
+
+      if (currentPos >= maxSlide * 0.9) {
+        handle.style.transition = 'transform 0.2s ease-out';
+        bg.style.transition = 'width 0.2s ease-out';
+        handle.style.transform = `translateX(${maxSlide}px)`;
+        bg.style.width = '100%';
+        container.classList.add('completed', 'disabled');
+        submitDelivery();
+      } else {
+        handle.style.transition = 'transform 0.3s ease-out';
+        bg.style.transition = 'width 0.3s ease-out';
+        handle.style.transform = 'translateX(0px)';
+        bg.style.width = '0px';
+      }
+    };
+
+    handle.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    handle.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+  }
+
+  function resetSlider() {
+    const container = document.getElementById('slider-container');
+    const handle = document.getElementById('slider-handle');
+    const bg = document.getElementById('slider-bg');
+    if (container) {
+      container.classList.remove('completed', 'disabled');
+      handle.style.transform = 'translateX(0px)';
+      bg.style.width = '0px';
+    }
+  }
+
+  async function compressAndWatermark(file, maxSizeKB, maxDimension, lines) {
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = URL.createObjectURL(file);
+    });
+    
+    let w = img.width, h = img.height;
+    if (w > maxDimension || h > maxDimension) {
+      if (w > h) { h = Math.round(h * (maxDimension / w)); w = maxDimension; }
+      else { w = Math.round(w * (maxDimension / h)); h = maxDimension; }
+    }
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const fontSize = Math.max(12, Math.round(w / 40));
+    const padding = 20;
+    const barH = (lines.length * (fontSize + 8)) + (padding * 2);
+    
+    ctx.fillStyle = 'rgba(0,10,63,0.85)';
+    ctx.fillRect(0, h - barH, w, barH);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `600 ${fontSize}px Manrope, sans-serif`;
+    lines.forEach((l, i) => ctx.fillText(l, padding, h - barH + padding + fontSize + (i * (fontSize + 8))));
+
+    return new Promise(res => {
+      let q = 0.8;
+      const check = () => canvas.toBlob(b => {
+        if (b.size > maxSizeKB * 1024 && q > 0.3) { q -= 0.1; check(); }
+        else res(b);
+      }, 'image/jpeg', q);
+      check();
+    });
+  }
+
+  async function uploadToCloudinary(blob, path) {
+    const fd = new FormData();
+    fd.append('file', blob);
+    fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    fd.append('folder', path);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Upload gagal');
+    return data.secure_url;
+  }
+
+  function getGps() {
+    return new Promise((res, rej) => {
+      if (!navigator.geolocation) return rej('GPS tidak didukung');
+      navigator.geolocation.getCurrentPosition(p => res(p.coords), () => rej('Gagal ambil GPS. Aktifkan izin lokasi.'), { timeout: 10000 });
+    });
+  }
+
+  async function submitDelivery() {
+    const statusEl = document.getElementById('submit-status');
+    statusEl.className = 'text-center text-[11px] font-bold uppercase tracking-widest mt-6 text-primary';
+    statusEl.textContent = 'VALIDASI DATA...';
+
+    const qtyMap = {};
+    for (const item of activeGroup.items) {
+      const v = document.getElementById(`terima-${item.production_log_id}`).value;
+      const q = parseInt(v);
+      if (isNaN(q) || q < 0) {
+        statusEl.className = 'text-center text-[11px] font-bold uppercase tracking-widest mt-6 text-red-600';
+        statusEl.textContent = 'LENGKAPI SEMUA QTY';
+        resetSlider();
+        return;
+      }
+      qtyMap[item.production_log_id] = q;
+    }
+
+    if (!receiverStatus) {
+      statusEl.className = 'text-center text-[11px] font-bold uppercase tracking-widest mt-6 text-red-600';
+      statusEl.textContent = 'PILIH STATUS PENERIMA';
+      resetSlider();
+      return;
+    }
+
+    let namaPenerima = 'Tanpa Penerima';
+    if (receiverStatus === 'diterima_langsung') {
+      namaPenerima = document.getElementById('input-nama-penerima').value.trim();
+      if (!namaPenerima) {
+        statusEl.className = 'text-center text-[11px] font-bold uppercase tracking-widest mt-6 text-red-600';
+        statusEl.textContent = 'ISI NAMA PENERIMA';
+        resetSlider();
+        return;
+      }
+    }
+
+    if (!selectedPhotoBlob) {
+      statusEl.className = 'text-center text-[11px] font-bold uppercase tracking-widest mt-6 text-red-600';
+      statusEl.textContent = 'AMBIL FOTO BUKTI';
+      resetSlider();
+      return;
+    }
+
+    try {
+      statusEl.textContent = 'MENGAMBIL GPS...';
+      const gps = await getGps();
+      
+      statusEl.textContent = 'WATERMARK FOTO...';
+      const stamp = new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+      const watermarks = [
+        `LOKASI: ${activeGroup.location_nama}`,
+        `PAKET: ${namaProduk[activeGroup.product_type]} (${namaMeal[activeGroup.meal_time]})`,
+        `KURIR: ${currentProfile.nama}`,
+        `WAKTU: ${stamp}`,
+        `GPS: ${gps.latitude.toFixed(6)}, ${gps.longitude.toFixed(6)}`
+      ];
+      const photoBlob = await compressAndWatermark(selectedPhotoBlob, 300, 1440, watermarks);
+
+      statusEl.textContent = 'MENGUPLOAD BUKTI...';
+      const path = `delivery/${todayStr()}/${activeGroup.location_nama.replace(/\s+/g, '_')}`;
+      const photoUrl = await uploadToCloudinary(photoBlob, path);
+
+      statusEl.textContent = 'MENYIMPAN LAPORAN...';
+      const groupId = crypto.randomUUID();
+      const rows = activeGroup.items.map(item => ({
+        production_log_id: item.production_log_id,
+        qty_produced: item.qty_produced,
+        qty_received: qtyMap[item.production_log_id],
+        photo_url: photoUrl,
+        gps_lat: gps.latitude,
+        gps_lng: gps.longitude,
+        submitted_by: currentProfile.id,
+        submitted_by_nama: currentProfile.nama,
+        visit_group_id: groupId,
+        receiver_status: receiverStatus,
+        receiver_name: namaPenerima
+      }));
+
+      const { error } = await supabaseClient.from('delivery_logs').insert(rows);
+      if (error) throw error;
+
+      showPopup('Laporan delivery berhasil disimpan.');
+      backToStops();
+    } catch (err) {
+      statusEl.className = 'text-center text-[11px] font-bold uppercase tracking-widest mt-6 text-red-600';
+      const detailParts = [err.message, err.details, err.hint, err.code].filter(Boolean);
+      statusEl.textContent = 'ERROR: ' + (detailParts.join(' | ') || 'Gagal menyimpan');
+      resetSlider();
+    }
+  }
+
+  function showPopup(msg) {
+    document.getElementById('popup-message').textContent = msg;
+    document.getElementById('popup-overlay').classList.remove('hidden');
+  }
+  function closePopup() {
+    document.getElementById('popup-overlay').classList.add('hidden');
+  }
+
+  (async () => {
+    currentProfile = await requireAuth(['delivery', 'produksi_delivery']);
+    if (currentProfile) {
+      renderUserHeader(currentProfile);
+      if (currentProfile.role === 'produksi_delivery') document.getElementById('menu-link').classList.remove('hidden');
+      
+      if (currentProfile.role === 'produksi_delivery' && currentProfile.assigned_route_id) {
+        const { data: route } = await supabaseClient.from('routes').select('id, nama').eq('id', currentProfile.assigned_route_id).single();
+        if (route) pilihRute(route); else loadRoutes();
+      } else {
+        loadRoutes();
+      }
+      updateBackButton();
+    }
+  })();
+
+  function renderUserHeader(user) {
+    document.getElementById('nama-user').textContent = user.nama;
+    const roleEl = document.getElementById('role-user');
+    if (roleEl) roleEl.textContent = user.role.replace('_', ' ');
+  }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(console.error);
+    });
+  }
+</script>
+
+</body></html>

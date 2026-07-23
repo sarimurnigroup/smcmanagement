@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0" name="viewport"/>
+<meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/>
+<meta content="no-cache" http-equiv="Pragma"/>
+<meta content="0" http-equiv="Expires"/>
+<title>SM Catering — Login</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#001a72"/>
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32"/>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="SMC System"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --sm-blue: #001a72;
+    --sm-blue-dark: #00124f;
+    --sm-blue-light: #e6e9f1;
+    --luminous-gold: #C8A24B;
+    --gold-light: #F7EFDD;
+    --bg-surface: #F8F9FA;
+    --text-primary: #1A1C1E;
+    --text-secondary: #44474E;
+    --border-color: #DDE2EA;
+  }
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  .heading-serif {
+    font-family: 'Libre Caslon Text', serif;
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 26, 114, 0.08);
+  }
+  input:focus {
+    outline: none;
+    border-color: var(--sm-blue) !important;
+    box-shadow: 0 0 0 3px rgba(0, 26, 114, 0.1) !important;
+  }
+  .btn-sm-primary {
+    background: var(--sm-blue);
+    color: white;
+    transition: all 0.2s ease;
+  }
+  .btn-sm-primary:active {
+    transform: scale(0.98);
+    background: var(--sm-blue-dark);
+  }
+  .fungsi-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .fungsi-card:active {
+    transform: translateY(2px);
+    border-color: var(--sm-blue);
+    background: var(--sm-blue-light);
+  }
+  .hidden { display: none; }
+  @keyframes fadeSlideIn { 
+    from { opacity: 0; transform: translateY(12px); } 
+    to { opacity: 1; transform: translateY(0); } 
+  }
+  .animate-in { animation: fadeSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+</style>
+</head>
+<body class="min-h-screen">
+<div class="min-h-screen flex flex-col items-center justify-center text-center" id="screen-loading">
+<div class="inline-block w-8 h-8 border-4 border-gray-200 border-t-[#001a72] rounded-full animate-spin"></div>
+<p class="mt-4 text-sm text-gray-500 font-medium">Memuat...</p>
+</div>
+<!-- LOGIN SCREEN -->
+<div class="hidden min-h-screen flex items-center justify-center p-6" id="screen-login">
+<div class="w-full max-w-md animate-in">
+<div class="flex flex-col items-center mb-8">
+<img alt="SM Catering Logo" class="h-20 w-auto mb-4 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzEbrf5tm-s_A4Xku__qVImcggP1XHK80M0kuTsaaBwwCJZDL_6Mw1wI7D9IT2FZB2NUY5eExaEWUKIVmv3lhmKdLt_jSXEIYL_QZHwVYdgZYUV39Cww_cmzEedDKmYhrtzoCCDR_S-oJzoff7faM2vbQx0-7nQf_B9o4DBWkMs2py3e4HdbTokoI1kTktQk0zUuhKC7BtRN7YGu9EuBBywbr1bQ_AYacW_UHiFo5FTheVslAEid7wrM5Z9UPvEMdDXQ4"/>
+<h1 class="heading-serif text-2xl font-bold text-[#001a72]">Portal Internal</h1>
+<p class="text-sm text-gray-500 mt-1">Masuk ke dashboard manajemen</p>
+</div>
+<div class="glass-card rounded-[24px] p-8">
+<div class="hidden mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm flex items-start gap-3" id="error-login">
+<span class="material-symbols-outlined text-[18px]">error</span>
+<span id="error-login-text"></span>
+</div>
+<div class="space-y-5">
+<div>
+<label class="block text-[13px] font-bold text-[#001a72] uppercase tracking-wider mb-2 ml-1" for="input-email">Email Karyawan</label>
+<input autocomplete="username" class="w-full h-[56px] px-4 rounded-xl border-gray-200 bg-gray-50/50 text-base transition-all" id="input-email" placeholder="nama@smc.com" type="email"/>
+</div>
+<div>
+<label class="block text-[13px] font-bold text-[#001a72] uppercase tracking-wider mb-2 ml-1" for="input-pin" id="label-pin">PIN / Password</label>
+<input autocomplete="current-password" class="w-full h-[56px] px-4 rounded-xl border-gray-200 bg-gray-50/50 text-base tracking-[0.2em] transition-all" id="input-pin" placeholder="Password" type="password"/>
+</div>
+<button class="btn-sm-primary w-full h-[60px] rounded-xl font-bold text-lg shadow-lg shadow-[#001a72]/10 mt-2" id="btn-masuk" onclick="submitLogin()">
+          Masuk
+        </button>
+<div class="pt-4 text-center">
+<button class="text-[13px] text-gray-400 hover:text-[#001a72] underline transition-colors" onclick="toggleAksesLain()">
+            Masalah akses atau superuser?
+          </button>
+<p class="hidden mt-3 text-[12px] text-gray-500 leading-relaxed bg-blue-50/50 p-3 rounded-lg border border-blue-100 animate-in" id="hint-akses-lain">
+<strong>Admin/Superuser:</strong> Masukkan email pribadi (non-domain SM). Sistem otomatis mengganti mode PIN menjadi password teks biasa.
+          </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- MENU PILIH FUNGSI -->
+<div class="hidden animate-in" id="screen-pilih-fungsi">
+<header class="bg-[#001a72] sticky top-0 z-50 shadow-md">
+<div class="max-w-md mx-auto px-5 py-4 flex items-center justify-between">
+<a class="flex items-center gap-3 group" href="profil.html">
+<div class="w-11 h-11 rounded-full bg-white/10 border-2 border-[#C8A24B]/60 overflow-hidden flex items-center justify-center shrink-0">
+<img class="hidden w-full h-full object-cover" id="avatar-mini-img"/>
+<span class="text-base font-bold text-[#C8A24B]" id="avatar-mini-initial"></span>
+</div>
+<div class="flex flex-col text-left">
+<h2 class="text-sm font-bold text-white leading-tight" id="nama-user">Memuat...</h2>
+<p class="text-[10px] font-bold text-white/60 uppercase tracking-wider leading-tight mt-0.5" id="role-user"></p>
+</div>
+</a>
+<button class="w-9 h-9 flex items-center justify-center rounded-full border border-white/20 text-white/80 bg-white/5 active:bg-white/10 transition-colors" onclick="logout()">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+</button>
+</div>
+</header>
+<main class="max-w-md mx-auto px-5 py-8">
+<div class="mb-8">
+<h1 class="heading-serif text-3xl font-bold text-[#001a72]">Pilih Operasi</h1>
+<p class="text-sm text-gray-500 mt-1">Silahkan pilih alur kerja hari ini</p>
+</div>
+<div class="grid gap-4">
+<!-- Produksi Card -->
+<button class="fungsi-card flex items-center p-5 rounded-2xl text-left w-full border-l-4 border-l-orange-400" onclick="window.location.href='produksi.html'">
+<div class="w-14 h-14 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[32px]">skillet</span>
+</div>
+<div class="ml-4 flex-1">
+<div class="flex items-center justify-between">
+<h3 class="font-bold text-[#001a72]">Input Produksi</h3>
+<span class="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold uppercase">Tahap 1</span>
+</div>
+<p class="text-[13px] text-gray-500 mt-0.5">Lapor jumlah porsi &amp; menu matang</p>
+</div>
+<span class="material-symbols-outlined text-gray-300 ml-2">chevron_right</span>
+</button>
+<!-- Delivery Card -->
+<button class="fungsi-card flex items-center p-5 rounded-2xl text-left w-full border-l-4 border-l-[#C8A24B]" onclick="window.location.href='delivery.html'">
+<div class="w-14 h-14 rounded-xl bg-[#F7EFDD] text-[#C8A24B] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[32px]">local_shipping</span>
+</div>
+<div class="ml-4 flex-1">
+<div class="flex items-center justify-between">
+<h3 class="font-bold text-[#001a72]">Konfirmasi Delivery</h3>
+<span class="text-[10px] bg-[#C8A24B] text-white px-2 py-0.5 rounded-full font-bold uppercase">Tahap 2</span>
+</div>
+<p class="text-[13px] text-gray-500 mt-0.5">Update status pengantaran mitra</p>
+</div>
+<span class="material-symbols-outlined text-gray-300 ml-2">chevron_right</span>
+</button>
+<!-- Monitoring Card -->
+<button class="fungsi-card flex items-center p-5 rounded-2xl text-left w-full border-l-4 border-l-blue-400" onclick="window.location.href='mitra-monitoring.html'">
+<div class="w-14 h-14 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[32px]">monitoring</span>
+</div>
+<div class="ml-4 flex-1">
+<div class="flex items-center justify-between">
+<h3 class="font-bold text-[#001a72]">Monitoring Saya</h3>
+<span class="material-symbols-outlined text-[14px] text-blue-400">verified</span>
+</div>
+<p class="text-[13px] text-gray-500 mt-0.5">Pantau performa &amp; riwayat tugas</p>
+</div>
+<span class="material-symbols-outlined text-gray-300 ml-2">chevron_right</span>
+</button>
+</div>
+<div class="mt-8 pt-6 border-t border-dashed border-gray-200">
+<p class="text-center text-[11px] text-gray-400 font-medium">SM Catering Internal System v2.0</p>
+</div>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="supabase-client.js"></script>
+<script src="auth-guard.js"></script>
+<script>
+  const LAST_EMAIL_KEY = 'sm_last_email';
+  const PIN_DOMAINS = /@(smc\.com|mitrasm\.com)$/i;
+
+  function showScreen(id) {
+    document.querySelectorAll('[id^="screen-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+  }
+
+  function toggleAksesLain() {
+    document.getElementById('hint-akses-lain').classList.toggle('hidden');
+  }
+
+  function showError(elId, pesan) {
+    const errorContainer = document.getElementById('error-login');
+    const errorText = document.getElementById('error-login-text');
+    errorText.textContent = pesan;
+    errorContainer.classList.remove('hidden');
+  }
+
+  function adjustPinField() {
+    const email = document.getElementById('input-email').value.trim();
+    const pinField = document.getElementById('input-pin');
+    const label = document.getElementById('label-pin');
+    if (PIN_DOMAINS.test(email)) {
+      pinField.type = 'tel';
+      pinField.setAttribute('inputmode', 'numeric');
+      pinField.setAttribute('pattern', '[0-9]*');
+      pinField.setAttribute('maxlength', '6');
+      pinField.placeholder = '••••••';
+      pinField.style.letterSpacing = '0.6em';
+      label.textContent = 'PIN (6 digit)';
+    } else {
+      pinField.type = 'password';
+      pinField.removeAttribute('inputmode');
+      pinField.removeAttribute('pattern');
+      pinField.removeAttribute('maxlength');
+      pinField.placeholder = 'Password';
+      pinField.style.letterSpacing = '0.1em';
+      label.textContent = 'PIN / Password';
+    }
+  }
+
+  function routeProfile(profile) {
+    if (profile.pin_is_temp) {
+      window.location.href = 'ganti-pin.html';
+      return;
+    }
+    if (profile.role === 'produksi_delivery') {
+      renderUserHeader(profile); 
+      showScreen('screen-pilih-fungsi');
+      return;
+    }
+    redirectByRole(profile.role);
+  }
+
+  function showLoginForm() {
+    const lastEmail = localStorage.getItem(LAST_EMAIL_KEY);
+    showScreen('screen-login');
+    if (lastEmail) {
+      document.getElementById('input-email').value = lastEmail;
+      adjustPinField();
+      document.getElementById('input-pin').focus();
+    } else {
+      document.getElementById('input-email').focus();
+    }
+  }
+
+  async function submitLogin() {
+    const email = document.getElementById('input-email').value.trim();
+    const pin = document.getElementById('input-pin').value;
+    document.getElementById('error-login').classList.add('hidden');
+
+    if (!email || !pin) {
+      showError('error-login', 'Email dan PIN/Password wajib diisi.');
+      return;
+    }
+
+    const btn = document.getElementById('btn-masuk');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>';
+
+    const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pin });
+
+    if (error) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      showError('error-login', 'Email atau PIN/Password salah.');
+      document.getElementById('input-pin').value = '';
+      document.getElementById('input-pin').focus();
+      return;
+    }
+
+    localStorage.setItem(LAST_EMAIL_KEY, email);
+
+    const profile = await getProfile();
+    if (!profile) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      showError('error-login', 'Gagal ambil data user. Hubungi Admin.');
+      return;
+    }
+    routeProfile(profile);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const emailField = document.getElementById('input-email');
+    const pinField = document.getElementById('input-pin');
+
+    emailField.addEventListener('input', adjustPinField);
+
+    pinField.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') submitLogin();
+    });
+
+    pinField.addEventListener('input', function () {
+      if (pinField.type === 'tel') {
+        pinField.value = pinField.value.replace(/\D/g, '').slice(0, 6);
+      }
+    });
+  });
+
+  (async () => {
+    const profile = await getProfile();
+    if (profile) {
+      routeProfile(profile);
+    } else {
+      showLoginForm();
+    }
+  })();
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(console.error);
+    });
+  }
+</script>
+</body></html>

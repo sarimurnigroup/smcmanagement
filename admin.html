@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SM Catering — Admin Dashboard</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#001a72"/>
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32"/>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="SMC System"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;600;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary": "#775a19",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed-variant": "#2d3f93",
+                        "on-primary-fixed": "#001258",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#f0f1f2",
+                        "inverse-surface": "#2e3132",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#7688e0",
+                        "on-background": "#191c1d",
+                        "tertiary-fixed": "#e5e2e1",
+                        "on-secondary-fixed-variant": "#5d4201",
+                        "on-tertiary-container": "#8e8d8c",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f3f4f5",
+                        "surface-container": "#edeeef",
+                        "surface-container-high": "#e7e8e9",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "surface-tint": "#4658ac",
+                        "secondary-fixed-dim": "#e9c176",
+                        "on-tertiary-fixed-variant": "#474646",
+                        "surface-dim": "#d9dadb",
+                        "primary-fixed": "#dee1ff",
+                        "on-error": "#ffffff",
+                        "outline": "#757683",
+                        "on-surface-variant": "#454651",
+                        "outline-variant": "#c5c5d3",
+                        "inverse-primary": "#b9c3ff",
+                        "primary": "#000a3f",
+                        "on-secondary-fixed": "#261900",
+                        "primary-fixed-dim": "#b9c3ff",
+                        "primary-container": "#001a72",
+                        "on-secondary-container": "#785a1a",
+                        "error": "#ba1a1a",
+                        "background": "#f8f9fa",
+                        "secondary-fixed": "#ffdea5",
+                        "error-container": "#ffdad6",
+                        "tertiary": "#111111",
+                        "surface-container-highest": "#e1e3e4",
+                        "tertiary-container": "#262626",
+                        "surface-variant": "#e1e3e4",
+                        "on-surface": "#191c1d",
+                        "surface": "#f8f9fa",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "surface-bright": "#f8f9fa",
+                        "secondary-container": "#fed488",
+                        "sm-blue": "#001a72",
+                        "sm-gold": "#C8A24B"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "gutter": "1.5rem",
+                        "margin-desktop": "2.5rem",
+                        "container-max": "1800px",
+                        "stack-lg": "2rem",
+                        "margin-mobile": "1rem",
+                        "stack-md": "1rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    fontFamily: {
+                        "label-md": ["Manrope"],
+                        "headline-lg": ["Libre Caslon Text"],
+                        "body-lg": ["Manrope"],
+                        "headline-md": ["Libre Caslon Text"],
+                        "display-lg": ["Libre Caslon Text"],
+                        "label-sm": ["Manrope"],
+                        "body-md": ["Manrope"]
+                    },
+                    fontSize: {
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c5c5d3; border-radius: 10px; }
+        .active-gold-border { border-bottom: 3px solid #C8A24B; }
+        .table-sticky-col { position: sticky; left: 0; background: inherit; z-index: 10; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-primary-container h-20 fixed top-0 left-0 right-0 z-50 shadow-lg">
+<div class="flex justify-between items-center px-margin-desktop w-full max-w-container-max mx-auto h-full">
+<!-- Left: Logo & User Info -->
+<div class="flex items-center gap-6">
+<a class="flex items-center gap-4 group transition-all" href="profil.html">
+<div class="w-12 h-12 rounded-full border-2 border-sm-gold flex items-center justify-center overflow-hidden bg-surface-container-low shadow-sm">
+<img class="hidden w-full h-full object-cover" id="avatar-mini-img"/>
+<span class="font-headline-md text-sm-gold" id="avatar-mini-initial"></span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-on-primary text-body-md leading-tight" id="nama-user">Memuat...</span>
+<span class="font-label-sm text-secondary-fixed text-xs uppercase tracking-wider" id="role-user"></span>
+</div>
+</a>
+</div>
+<!-- Center: Navigation -->
+<div class="flex flex-col items-center">
+<nav class="flex gap-8">
+<button class="font-label-md text-label-md text-primary-fixed-dim hover:text-on-primary transition-colors pb-1 active-gold-border font-bold" id="tab-btn-monitoring" onclick="showTab('monitoring')">Monitoring Harian</button>
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-on-primary transition-colors pb-1" id="tab-btn-laporan" onclick="showTab('laporan')">Laporan</button>
+<button class="hidden font-label-md text-label-md text-on-surface-variant hover:text-on-primary transition-colors pb-1" id="tab-btn-akun" onclick="showTab('akun')">Kelola Akun</button>
+</nav>
+</div>
+<!-- Right: spacer (logout dipindah ke profil.html) -->
+<div class="flex items-center gap-4 w-12"></div>
+</div>
+</header>
+<main class="mt-28 px-margin-desktop w-full max-w-container-max mx-auto pb-12">
+<!-- Monitoring Section -->
+<section class="animate-fade" id="tab-monitoring">
+<div class="flex flex-col gap-6">
+<!-- Toolbar -->
+<div class="bg-surface p-6 rounded-xl border border-outline-variant shadow-sm flex flex-wrap items-center justify-between gap-4">
+<div class="flex flex-wrap items-center gap-3">
+<div class="flex flex-col gap-1">
+<label class="text-[10px] font-bold text-outline uppercase tracking-tighter">Tanggal</label>
+<input class="border-outline-variant rounded-lg font-label-md text-sm px-3 py-2 bg-background focus:ring-primary focus:border-primary" id="date-picker" type="date"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-[10px] font-bold text-outline uppercase tracking-tighter">Lokasi</label>
+<select class="border-outline-variant rounded-lg font-label-md text-sm px-3 py-2 bg-background focus:ring-primary focus:border-primary min-w-[200px]" id="filter-lokasi">
+<option value="">Semua Lokasi</option>
+<option>Polres Kepulauan Seribu</option>
+<option>Polres Metro Jakarta Pusat</option>
+<option>Polres Metro Jakarta Utara</option>
+<option>Polres Pelabuhan Tanjung Priok</option>
+<option>Polsek Cempaka Putih</option>
+<option>Polsek Cilincing</option>
+<option>Polsek Gambir</option>
+<option>Polsek Johar Baru</option>
+<option>Polsek Kalibaru</option>
+<option>Polsek Kelapa Gading</option>
+<option>Polsek Kemayoran</option>
+<option>Polsek Koja</option>
+<option>Polsek Menteng</option>
+<option>Polsek Muara Baru</option>
+<option>Polsek Pademangan</option>
+<option>Polsek Penjaringan</option>
+<option>Polsek Sawah Besar</option>
+<option>Polsek Senen</option>
+<option>Polsek Sunda Kelapa</option>
+<option>Polsek Tanjung Abang</option>
+<option>Polsek Tanjung Priok</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-[10px] font-bold text-outline uppercase tracking-tighter">Produk</label>
+<select class="border-outline-variant rounded-lg font-label-md text-sm pl-3 pr-8 py-2 bg-background min-w-[160px]" id="filter-produk">
+<option value="">Semua Produk</option>
+<option value="tahanan">Tahanan</option>
+<option value="anggota">Anggota</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-[10px] font-bold text-outline uppercase tracking-tighter">Jadwal</label>
+<select class="border-outline-variant rounded-lg font-label-md text-sm pl-3 pr-8 py-2 bg-background min-w-[160px]" id="filter-meal">
+<option value="">Semua Meal</option>
+<option value="pagi">Pagi</option>
+<option value="siang">Siang</option>
+<option value="malam">Malam</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-[10px] font-bold text-outline uppercase tracking-tighter">Status</label>
+<select class="border-outline-variant rounded-lg font-label-md text-sm pl-3 pr-8 py-2 bg-background min-w-[160px]" id="filter-status">
+<option value="">Semua Status</option>
+<option value="belum_produksi">Belum Diproduksi</option>
+<option value="siap_kirim">Siap Kirim</option>
+<option value="terkirim">Terkirim</option>
+<option value="selesai">Selesai</option>
+</select>
+</div>
+</div>
+<button class="bg-sm-gold text-on-secondary disabled:bg-surface-variant disabled:text-outline h-fit mt-auto px-6 py-3 rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 flex items-center gap-2" disabled="" id="btn-approve" onclick="approveSelected()">
+<span class="material-symbols-outlined text-base">check_circle</span>
+                        Approve Terpilih (0)
+                    </button>
+</div>
+<div class="text-on-surface-variant text-sm font-label-md italic ml-2" id="status-line"></div>
+<!-- Main Table -->
+<div class="bg-surface rounded-xl border border-outline-variant shadow-lg overflow-hidden flex flex-col">
+<div class="overflow-x-auto custom-scrollbar">
+<table class="w-full text-left border-collapse min-w-[1600px]">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs table-sticky-col">Lokasi</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Produk</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Jadwal</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Qty Produksi</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Status</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Diinput Oleh</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Disetujui</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Dikirim</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Diterima</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Retur</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Penerima</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Media</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Aksi</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant font-body-md text-sm" id="table-body">
+<!-- Data rows injected by JS -->
+<tr>
+<td class="p-12 text-center text-outline-variant" colspan="13">
+<div class="flex flex-col items-center gap-4">
+<div class="w-12 h-12 border-4 border-sm-blue border-t-transparent rounded-full animate-spin"></div>
+<span class="font-headline-md text-primary">Memuat data operasional...</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+<!-- Laporan Section -->
+<section class="hidden animate-fade" id="tab-laporan">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- Sidebar Tabs -->
+<div class="lg:col-span-3 flex flex-col gap-3">
+<button class="flex items-center justify-between p-4 rounded-xl bg-surface border border-outline-variant font-bold text-left hover:border-sm-gold transition-all group active" id="subtab-btn-harian" onclick="showLaporanSubTab('harian')">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary group-[.active]:text-sm-gold">today</span>
+<span class="font-label-md">Laporan Harian</span>
+</div>
+<span class="material-symbols-outlined text-sm opacity-0 group-[.active]:opacity-100">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-4 rounded-xl bg-surface border border-outline-variant font-bold text-left hover:border-sm-gold transition-all group" id="subtab-btn-bulanan" onclick="showLaporanSubTab('bulanan')">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary group-[.active]:text-sm-gold">calendar_month</span>
+<span class="font-label-md">Rekap Bulanan</span>
+</div>
+<span class="material-symbols-outlined text-sm opacity-0 group-[.active]:opacity-100">chevron_right</span>
+</button>
+</div>
+<!-- Laporan Content -->
+<div class="lg:col-span-9 flex flex-col gap-6">
+<!-- Harian -->
+<div class="flex flex-col gap-6" id="subtab-harian">
+<div class="bg-surface p-6 rounded-xl border border-outline-variant shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-4">
+<input class="border-outline-variant rounded-lg font-label-md text-sm px-4 py-2 bg-background" id="date-picker-laporan" type="date"/>
+<button class="bg-primary-container text-on-primary px-6 py-2 rounded-lg font-bold shadow-md hover:opacity-90 transition-all" onclick="generateLaporanHarian()">Generate Laporan</button>
+</div>
+<button class="text-primary hover:text-sm-gold font-bold flex items-center gap-2 underline underline-offset-4" onclick="copyLaporan()">
+<span class="material-symbols-outlined text-lg">content_copy</span>
+                                Copy ke Clipboard
+                            </button>
+</div>
+<div class="text-outline text-xs px-2 italic" id="status-line-laporan"></div>
+<textarea class="w-full bg-surface border border-outline-variant rounded-xl p-8 font-mono text-sm leading-relaxed custom-scrollbar shadow-inner focus:ring-0" id="laporan-output" placeholder="Hasil laporan harian akan muncul di sini..." readonly="" rows="24"></textarea>
+</div>
+<!-- Bulanan -->
+<div class="hidden flex flex-col gap-6" id="subtab-bulanan">
+<div class="bg-surface p-6 rounded-xl border border-outline-variant shadow-sm flex items-center gap-4">
+<input class="border-outline-variant rounded-lg font-label-md text-sm px-4 py-2 bg-background" id="month-picker-bulanan" type="month"/>
+<button class="bg-primary-container text-on-primary px-6 py-2 rounded-lg font-bold shadow-md hover:opacity-90 transition-all" onclick="loadLaporanBulanan()">Tampilkan Rekap</button>
+</div>
+<div class="text-outline text-xs px-2 italic" id="status-line-bulanan"></div>
+<div class="flex flex-col gap-10" id="bulanan-content">
+<!-- Injected monthly tables -->
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Kelola Akun Section -->
+<section class="hidden animate-fade" id="tab-akun">
+<div class="flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-md text-headline-md text-primary">Manajemen Akun</h2>
+<div class="text-secondary text-sm font-label-md" id="status-line-akun"></div>
+</div>
+<div class="bg-surface rounded-xl border border-outline-variant shadow-lg overflow-hidden">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Nama Lengkap</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Role</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Email Access</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Status</th>
+<th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs text-right">Aksi Kontrol</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant font-body-md" id="users-table-body">
+<!-- Injected user rows -->
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</main>
+<!-- Generic Popup Modal -->
+<div class="fixed inset-0 bg-primary/40 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-6" id="popup-overlay">
+<div class="bg-surface p-10 rounded-2xl shadow-2xl max-w-sm w-full text-center border border-outline-variant animate-fade">
+<div class="w-20 h-20 bg-done-bg rounded-full flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-4xl text-done-text" style="font-variation-settings: 'wght' 700">check_circle</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mb-2">Konfirmasi</h3>
+<p class="font-body-md text-on-surface-variant mb-8" id="popup-message"></p>
+<button class="w-full bg-primary-container text-on-primary py-4 rounded-xl font-bold text-lg shadow-lg hover:opacity-90 transition-all" onclick="closePopup()">Selesai</button>
+</div>
+</div>
+<!-- Script Sources -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="supabase-client.js"></script>
+<script src="auth-guard.js"></script>
+<script>
+        // Variables for system state
+        let currentProfile = null;
+        let currentRows = [];
+        const namaMeal = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
+        const mealBadgeColor = {
+            pagi: 'bg-amber-100 text-amber-700',
+            siang: 'bg-sky-100 text-sky-700',
+            malam: 'bg-indigo-100 text-indigo-700'
+        };
+        const namaProduk = { tahanan: 'Tahanan', anggota: 'Anggota' };
+        const mealOrder = { pagi: 0, siang: 1, malam: 2 };
+
+        // Helper functions
+        function todayStr() {
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function showTab(tab) {
+            ['monitoring', 'laporan', 'akun'].forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (t === tab) {
+                    el?.classList.remove('hidden');
+                    btn?.classList.add('active-gold-border', 'font-bold');
+                    btn?.classList.remove('text-on-surface-variant');
+                    btn?.classList.add('text-primary-fixed-dim');
+                } else {
+                    el?.classList.add('hidden');
+                    btn?.classList.remove('active-gold-border', 'font-bold');
+                    btn?.classList.add('text-on-surface-variant');
+                    btn?.classList.remove('text-primary-fixed-dim');
+                }
+            });
+            if (tab === 'akun') loadUsers();
+        }
+
+        function showLaporanSubTab(sub) {
+            ['harian', 'bulanan'].forEach(s => {
+                const el = document.getElementById(`subtab-${s}`);
+                const btn = document.getElementById(`subtab-btn-${s}`);
+                if (s === sub) {
+                    el?.classList.remove('hidden');
+                    btn?.classList.add('active', 'border-sm-gold', 'bg-surface-container-low');
+                } else {
+                    el?.classList.add('hidden');
+                    btn?.classList.remove('active', 'border-sm-gold', 'bg-surface-container-low');
+                }
+            });
+        }
+
+        function computeStatusSiklus(row) {
+            if (!row.log_id) return { key: 'belum_produksi', label: 'Belum Produksi', cls: 'bg-surface-container-highest text-outline' };
+            const sudahDikirim = row.qty_received !== null;
+            if (row.status === 'approved') return { key: 'selesai', label: 'Selesai', cls: 'bg-done-bg text-done-text border border-done-text/20' };
+            if (sudahDikirim) return { key: 'terkirim', label: 'Terkirim', cls: 'bg-secondary-container text-on-secondary-container' };
+            return { key: 'siap_kirim', label: 'Siap Kirim', cls: 'bg-sm-gold/20 text-secondary-fixed-dim border border-sm-gold' };
+        }
+
+        async function loadData() {
+            const tanggal = document.getElementById('date-picker').value;
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = '<tr><td colspan="13" class="p-12 text-center text-outline-variant"><div class="flex flex-col items-center gap-4"><div class="w-12 h-12 border-4 border-sm-blue border-t-transparent rounded-full animate-spin"></div><span class="font-headline-md text-primary">Memuat data operasional...</span></div></td></tr>';
+
+            const { data: lp, error: lpErr } = await supabaseClient.from('location_products').select('location_id, product_type, meal_time, locations(nama)').order('location_id');
+            const { data: pl, error: plErr } = await supabaseClient.from('production_logs').select('id, location_id, product_type, meal_time, qty_produced, status, users!input_by(nama), approved_user:users!approved_by(nama)').eq('tanggal', tanggal);
+
+            if (lpErr || plErr) {
+                tableBody.innerHTML = '<tr><td colspan="13" class="p-10 text-center text-error">Gagal memuat data dari database. Silahkan refresh.</td></tr>';
+                return;
+            }
+
+            const logIds = pl.map(p => p.id);
+            let dl = [];
+            if (logIds.length > 0) {
+                const { data: dls } = await supabaseClient.from('delivery_logs').select('production_log_id, qty_received, retur, photo_url, gps_lat, gps_lng, receiver_name, users!submitted_by(nama)').in('production_log_id', logIds);
+                dl = dls || [];
+            }
+
+            currentRows = lp.map(item => {
+                const prod = pl.find(p => p.location_id === item.location_id && p.product_type === item.product_type && p.meal_time === item.meal_time);
+                const delivery = prod ? dl.find(d => d.production_log_id === prod.id) : null;
+                return {
+                    location_nama: item.locations.nama,
+                    product_type: item.product_type,
+                    meal_time: item.meal_time,
+                    log_id: prod ? prod.id : null,
+                    qty_produced: prod ? prod.qty_produced : null,
+                    status: prod ? prod.status : null,
+                    input_by_nama: prod?.users?.nama,
+                    approved_by_nama: prod?.approved_user?.nama,
+                    delivered_by_nama: delivery?.users?.nama,
+                    qty_received: delivery ? delivery.qty_received : null,
+                    retur: delivery ? delivery.retur : null,
+                    receiver_name: delivery ? delivery.receiver_name : null,
+                    photo_url: delivery ? delivery.photo_url : null,
+                    gps_lat: delivery ? delivery.gps_lat : null,
+                    gps_lng: delivery ? delivery.gps_lng : null
+                };
+            });
+
+            currentRows.sort((a, b) => a.location_nama.localeCompare(b.location_nama) || a.product_type.localeCompare(b.product_type) || mealOrder[a.meal_time] - mealOrder[b.meal_time]);
+            renderTable();
+        }
+
+        function renderTable() {
+            const fLokasi = document.getElementById('filter-lokasi').value;
+            const fProduk = document.getElementById('filter-produk').value;
+            const fMeal = document.getElementById('filter-meal').value;
+            const fStatus = document.getElementById('filter-status').value;
+
+            const filtered = currentRows.filter(r => {
+                if (fLokasi && r.location_nama !== fLokasi) return false;
+                if (fProduk && r.product_type !== fProduk) return false;
+                if (fMeal && r.meal_time !== fMeal) return false;
+                if (fStatus && computeStatusSiklus(r).key !== fStatus) return false;
+                return true;
+            });
+
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="13" class="p-10 text-center text-outline">Tidak ada data operasional yang sesuai dengan filter.</td></tr>';
+                updateApproveButton();
+                return;
+            }
+
+            filtered.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-surface-container-low transition-colors group";
+                const siklus = computeStatusSiklus(row);
+
+                const qtyDisplay = row.log_id 
+                    ? `<div class="flex items-center gap-2" id="qtycell-${row.log_id}">
+                         <span class="font-bold text-primary">${row.qty_produced}</span>
+                         <button onclick="enableEditQty('${row.log_id}', ${row.qty_produced})" class="opacity-0 group-hover:opacity-100 material-symbols-outlined text-xs p-1 rounded hover:bg-surface-container-high transition-all">edit</button>
+                       </div>`
+                    : '<span class="text-outline-variant">—</span>';
+
+                const mediaActions = row.photo_url 
+                    ? `<div class="flex gap-2">
+                        <a href="${row.photo_url}" target="_blank" class="p-2 rounded-full bg-surface-container border border-outline-variant hover:bg-sm-gold/10 hover:text-sm-gold transition-all" title="Lihat Foto"><span class="material-symbols-outlined text-sm">image</span></a>
+                        <a href="https://www.google.com/maps?q=${row.gps_lat},${row.gps_lng}" target="_blank" class="p-2 rounded-full bg-surface-container border border-outline-variant hover:bg-primary/10 hover:text-primary transition-all" title="Buka GPS"><span class="material-symbols-outlined text-sm">location_on</span></a>
+                       </div>`
+                    : '<span class="text-outline-variant">—</span>';
+
+                const rowAction = (siklus.key === 'terkirim')
+                    ? `<div class="flex items-center gap-3">
+                        <input type="checkbox" class="approve-checkbox w-4 h-4 rounded border-outline-variant text-sm-gold focus:ring-sm-gold" data-log-id="${row.log_id}" onchange="updateApproveButton()">
+                        <button onclick="approveSingle('${row.log_id}')" class="bg-sm-gold text-on-secondary px-3 py-1 rounded text-xs font-bold hover:brightness-110 transition-all">Approve</button>
+                       </div>`
+                    : `<span class="text-outline-variant text-[10px] uppercase font-bold tracking-tighter">Dikunci</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-4 font-bold text-primary table-sticky-col">${row.location_nama}</td>
+                    <td class="p-4">${namaProduk[row.product_type]}</td>
+                    <td class="p-4"><span class="px-2 py-1 rounded text-xs uppercase font-bold ${mealBadgeColor[row.meal_time]}">${namaMeal[row.meal_time]}</span></td>
+                    <td class="p-4">${qtyDisplay}</td>
+                    <td class="p-4"><span class="badge px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wide shadow-sm ${siklus.cls}">${siklus.label}</span></td>
+                    <td class="p-4 text-xs font-medium">${row.input_by_nama || '—'}</td>
+                    <td class="p-4 text-xs font-medium">${row.approved_by_nama || '—'}</td>
+                    <td class="p-4 text-xs font-medium">${row.delivered_by_nama || '—'}</td>
+                    <td class="p-4 font-bold">${row.qty_received ?? '—'}</td>
+                    <td class="p-4"><span class="${row.retur > 0 ? 'text-error font-bold' : 'text-outline-variant'}">${row.retur ?? '—'}</span></td>
+                    <td class="p-4 text-xs italic">${row.receiver_name || '—'}</td>
+                    <td class="p-4">${mediaActions}</td>
+                    <td class="p-4">${rowAction}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            updateApproveButton();
+        }
+
+        function updateApproveButton() {
+            const checked = document.querySelectorAll('.approve-checkbox:checked').length;
+            const btn = document.getElementById('btn-approve');
+            btn.innerHTML = `<span class="material-symbols-outlined text-base">check_circle</span> Approve Terpilih (${checked})`;
+            btn.disabled = checked === 0;
+        }
+
+        async function approveSingle(id) {
+            const { error } = await supabaseClient.from('production_logs').update({ status: 'approved', approved_by: currentProfile.id, approved_at: new Date().toISOString() }).eq('id', id);
+            if (!error) {
+                showPopup("Data berhasil disetujui.");
+                loadData();
+            }
+        }
+
+        async function approveSelected() {
+            const ids = Array.from(document.querySelectorAll('.approve-checkbox:checked')).map(el => el.dataset.logId);
+            const { error } = await supabaseClient.from('production_logs').update({ status: 'approved', approved_by: currentProfile.id, approved_at: new Date().toISOString() }).in('id', ids);
+            if (!error) {
+                showPopup(`${ids.length} data operasional berhasil disetujui secara massal.`);
+                loadData();
+            }
+        }
+
+        function enableEditQty(id, current) {
+            const cell = document.getElementById(`qtycell-${id}`);
+            cell.innerHTML = `
+                <div class="flex items-center gap-1">
+                    <input type="number" id="input-qty-${id}" value="${current}" class="w-16 p-1 text-xs border-outline-variant rounded focus:ring-primary">
+                    <button onclick="saveQty('${id}')" class="bg-primary-container text-on-primary p-1 rounded"><span class="material-symbols-outlined text-xs">check</span></button>
+                    <button onclick="loadData()" class="bg-surface-variant p-1 rounded"><span class="material-symbols-outlined text-xs">close</span></button>
+                </div>
+            `;
+        }
+
+        async function saveQty(id) {
+            const val = document.getElementById(`input-qty-${id}`).value;
+            await supabaseClient.from('production_logs').update({ qty_produced: parseInt(val) }).eq('id', id);
+            loadData();
+        }
+
+        function showPopup(msg) {
+            document.getElementById('popup-message').innerText = msg;
+            document.getElementById('popup-overlay').classList.remove('hidden');
+        }
+        function closePopup() { document.getElementById('popup-overlay').classList.add('hidden'); }
+
+        async function loadUsers() {
+            const tbody = document.getElementById('users-table-body');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center">Memuat daftar akun...</td></tr>';
+            const { data, error } = await supabaseClient.from('users').select('id, nama, role, email, is_active').order('nama');
+            if (error) return;
+            
+            tbody.innerHTML = '';
+            data.forEach(u => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-surface-container-low transition-all";
+                tr.innerHTML = `
+                    <td class="p-4 font-bold text-primary">${u.nama}</td>
+                    <td class="p-4 text-xs uppercase tracking-widest font-bold text-outline">${u.role}</td>
+                    <td class="p-4 text-sm">${u.email}</td>
+                    <td class="p-4"><span class="badge px-2 py-1 rounded text-[10px] font-bold uppercase ${u.is_active ? 'bg-done-bg text-done-text' : 'bg-surface-variant text-outline'}">${u.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
+                    <td class="p-4 text-right">
+                        <button onclick="toggleActive('${u.id}', ${u.is_active})" class="text-sm font-bold ${u.is_active ? 'text-error' : 'text-primary'} hover:underline">
+                            ${u.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function toggleActive(id, status) {
+            await supabaseClient.from('users').update({ is_active: !status }).eq('id', id);
+            loadUsers();
+        }
+
+        // Init process
+        (async () => {
+            currentProfile = await requireAuth(['admin', 'superuser']);
+            if (currentProfile) {
+                renderUserHeader(currentProfile);
+
+                document.getElementById('date-picker').value = todayStr();
+                document.getElementById('date-picker-laporan').value = todayStr();
+                document.getElementById('month-picker-bulanan').value = todayStr().slice(0, 7);
+
+                document.getElementById('date-picker').addEventListener('change', loadData);
+                document.getElementById('filter-lokasi').addEventListener('change', renderTable);
+                document.getElementById('filter-produk').addEventListener('change', renderTable);
+                document.getElementById('filter-meal').addEventListener('change', renderTable);
+                document.getElementById('filter-status').addEventListener('change', renderTable);
+
+                if (currentProfile.role === 'superuser') {
+                    document.getElementById('tab-btn-akun').classList.remove('hidden');
+                }
+                loadData();
+            }
+        })();
+
+        function formatTanggalIndo(dateStr) {
+            const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+            const [y, m, d] = dateStr.split('-').map(Number);
+            return `${d} ${bulanIndo[m - 1]} ${y}`;
+        }
+
+        async function generateLaporanHarian() {
+            const tanggal = document.getElementById('date-picker-laporan').value;
+            const output = document.getElementById('laporan-output');
+            const statusLine = document.getElementById('status-line-laporan');
+            statusLine.innerText = "Menyusun rekap harian...";
+            output.value = '';
+
+            const { data: lp, error: lpErr } = await supabaseClient
+                .from('location_products')
+                .select('location_id, product_type, meal_time, locations(nama)')
+                .order('location_id');
+
+            const { data: pl, error: plErr } = await supabaseClient
+                .from('production_logs')
+                .select('id, location_id, product_type, meal_time, qty_produced, status')
+                .eq('tanggal', tanggal);
+
+            if (lpErr || plErr) {
+                statusLine.innerText = "Gagal memuat data: " + (lpErr ? lpErr.message : plErr.message);
+                return;
+            }
+
+            const logIds = pl.map(p => p.id);
+            let dl = [];
+            if (logIds.length > 0) {
+                const { data: dls } = await supabaseClient
+                    .from('delivery_logs')
+                    .select('production_log_id, qty_received, retur')
+                    .in('production_log_id', logIds);
+                dl = dls || [];
+            }
+
+            const rows = lp.map(item => {
+                const prod = pl.find(p => p.location_id === item.location_id && p.product_type === item.product_type && p.meal_time === item.meal_time);
+                const delivery = prod ? dl.find(d => d.production_log_id === prod.id) : null;
+                return {
+                    location_nama: item.locations.nama,
+                    product_type: item.product_type,
+                    meal_time: item.meal_time,
+                    qty_produced: prod ? prod.qty_produced : null,
+                    status: prod ? prod.status : null,
+                    qty_received: delivery ? delivery.qty_received : null,
+                    retur: delivery ? delivery.retur : null
+                };
+            });
+
+            const totalItem = rows.length;
+            const sudahProduksi = rows.filter(r => r.qty_produced !== null).length;
+            const sudahKirim = rows.filter(r => r.qty_received !== null).length;
+            const sudahApprove = rows.filter(r => r.status === 'approved').length;
+
+            const byLokasi = {};
+            rows.forEach(r => {
+                if (!byLokasi[r.location_nama]) byLokasi[r.location_nama] = [];
+                byLokasi[r.location_nama].push(r);
+            });
+
+            let text = `*📋 LAPORAN HARIAN PRODUKSI & DISTRIBUSI — SM CATERING*\n`;
+            text += `Tanggal: ${formatTanggalIndo(tanggal)}\n\n`;
+            text += `*Ringkasan:*\n`;
+            text += `Total jadwal: ${totalItem}\n`;
+            text += `Sudah produksi: ${sudahProduksi}/${totalItem}\n`;
+            text += `Sudah dikirim: ${sudahKirim}/${totalItem}\n`;
+            text += `Sudah disetujui: ${sudahApprove}/${totalItem}\n\n`;
+            text += `*Detail per Lokasi:*\n`;
+
+            Object.keys(byLokasi).sort().forEach(loc => {
+                text += `\n📍 *${loc}*\n`;
+                byLokasi[loc]
+                    .sort((a, b) => mealOrder[a.meal_time] - mealOrder[b.meal_time])
+                    .forEach(r => {
+                        const label = `${namaProduk[r.product_type]} ${namaMeal[r.meal_time]}`;
+                        if (r.qty_produced === null) {
+                            text += `- ${label}: belum ada input produksi\n`;
+                            return;
+                        }
+                        let statusText = 'siap kirim';
+                        if (r.qty_received !== null) statusText = r.status === 'approved' ? 'selesai & disetujui' : 'sudah terkirim';
+                        const returText = r.retur > 0 ? `, retur ${r.retur}` : '';
+                        text += `- ${label}: ${r.qty_produced} porsi (${statusText}${returText})\n`;
+                    });
+            });
+
+            const belumInput = rows.filter(r => r.qty_produced === null);
+            if (belumInput.length > 0) {
+                text += `\n*Catatan — belum ada input produksi:*\n`;
+                belumInput.forEach(r => {
+                    text += `- ${r.location_nama} (${namaProduk[r.product_type]} ${namaMeal[r.meal_time]})\n`;
+                });
+            }
+
+            output.value = text;
+            statusLine.innerText = "Laporan berhasil disusun.";
+        }
+
+        function copyLaporan() {
+            const area = document.getElementById('laporan-output');
+            area.select();
+            document.execCommand('copy');
+            showPopup("Teks laporan disalin ke clipboard.");
+        }
+
+        async function loadLaporanBulanan() {
+            const bulan = document.getElementById('month-picker-bulanan').value;
+            const container = document.getElementById('bulanan-content');
+            const statusLine = document.getElementById('status-line-bulanan');
+            statusLine.innerText = "Memproses rekapitulasi...";
+            container.innerHTML = `<div class="p-20 text-center"><div class="w-10 h-10 border-4 border-sm-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>Memproses rekapitulasi ${bulan}...</div>`;
+
+            const [y, m] = bulan.split('-').map(Number);
+            const startDate = `${bulan}-01`;
+            const lastDay = new Date(y, m, 0).getDate();
+            const endDate = `${bulan}-${String(lastDay).padStart(2, '0')}`;
+
+            const { data: pl, error } = await supabaseClient
+                .from('production_logs')
+                .select('id, product_type, qty_produced, locations(nama)')
+                .gte('tanggal', startDate)
+                .lte('tanggal', endDate);
+
+            if (error) {
+                container.innerHTML = `<div class="p-10 text-center text-error">Gagal memuat rekap: ${error.message}</div>`;
+                statusLine.innerText = '';
+                return;
+            }
+
+            if (!pl || pl.length === 0) {
+                container.innerHTML = `<div class="bg-surface rounded-xl border border-outline-variant p-10 text-center italic text-outline">Belum ada data produksi untuk periode ${bulan}.</div>`;
+                statusLine.innerText = '';
+                return;
+            }
+
+            const logIds = pl.map(p => p.id);
+            let dl = [];
+            if (logIds.length > 0) {
+                const { data: dls } = await supabaseClient
+                    .from('delivery_logs')
+                    .select('production_log_id, qty_received, retur')
+                    .in('production_log_id', logIds);
+                dl = dls || [];
+            }
+            const deliveryByLog = {};
+            dl.forEach(d => { deliveryByLog[d.production_log_id] = d; });
+
+            const agg = {};
+            pl.forEach(row => {
+                const key = `${row.locations.nama}|${row.product_type}`;
+                if (!agg[key]) agg[key] = { location: row.locations.nama, product: row.product_type, qty_produced: 0, qty_received: 0, retur: 0 };
+                agg[key].qty_produced += row.qty_produced;
+                const d = deliveryByLog[row.id];
+                if (d) {
+                    agg[key].qty_received += d.qty_received;
+                    agg[key].retur += d.retur;
+                }
+            });
+
+            const rows = Object.values(agg).sort((a, b) => a.location.localeCompare(b.location) || a.product.localeCompare(b.product));
+
+            let html = `<div class="bg-surface rounded-xl border border-outline-variant shadow-lg overflow-hidden">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="bg-surface-container-low border-b border-outline-variant">
+                            <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Lokasi</th>
+                            <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Produk</th>
+                            <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Total Produksi</th>
+                            <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Total Diterima</th>
+                            <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Total Retur</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-outline-variant">`;
+            rows.forEach(r => {
+                html += `<tr class="hover:bg-surface-container-low transition-colors">
+                    <td class="p-4 font-bold text-primary">${r.location}</td>
+                    <td class="p-4">${namaProduk[r.product]}</td>
+                    <td class="p-4 font-bold">${r.qty_produced}</td>
+                    <td class="p-4">${r.qty_received}</td>
+                    <td class="p-4 ${r.retur > 0 ? 'text-error font-bold' : 'text-outline-variant'}">${r.retur}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+
+            container.innerHTML = html;
+            statusLine.innerText = `Rekap ${rows.length} baris untuk periode ${bulan}.`;
+        }
+
+    </script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(console.error);
+    });
+  }
+</script>
+</body></html>
