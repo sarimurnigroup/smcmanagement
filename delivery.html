@@ -523,10 +523,10 @@ Kembali ke Menu Utama
       itemRow.innerHTML = `
         <div class="flex-1">
           <div class="text-sm font-bold text-slate-700">Produksi: ${item.qty_produced}</div>
-          <div id="retur-${item.production_log_id}" class="text-[10px] font-bold uppercase mt-1"></div>
+          <div id="retur-${item.id}" class="text-[10px] font-bold uppercase mt-1"></div>
         </div>
         <div class="w-24">
-          <input type="number" id="terima-${item.production_log_id}" placeholder="0" class="w-full text-center font-bold text-sm-blue text-lg" oninput="updateRetur('${item.production_log_id}', ${item.qty_produced})">
+          <input type="number" id="terima-${item.id}" placeholder="0" class="w-full text-center font-bold text-sm-blue text-lg" oninput="updateRetur('${item.id}', ${item.qty_produced})">
         </div>
       `;
       itemsContainer.appendChild(itemRow);
@@ -720,7 +720,7 @@ Kembali ke Menu Utama
 
     const qtyMap = {};
     for (const item of activeGroup.items) {
-      const v = document.getElementById(`terima-${item.production_log_id}`).value;
+      const v = document.getElementById(`terima-${item.id}`).value;
       const q = parseInt(v);
       if (isNaN(q) || q < 0) {
         statusEl.className = 'text-center text-[11px] font-bold uppercase tracking-widest mt-6 text-red-600';
@@ -728,7 +728,7 @@ Kembali ke Menu Utama
         resetSlider();
         return;
       }
-      qtyMap[item.production_log_id] = q;
+      qtyMap[item.id] = q;
     }
 
     if (!receiverStatus) {
@@ -778,9 +778,9 @@ Kembali ke Menu Utama
       statusEl.textContent = 'MENYIMPAN LAPORAN...';
       const groupId = crypto.randomUUID();
       const rows = activeGroup.items.map(item => ({
-        production_log_id: item.production_log_id,
+        production_log_id: item.id,
         qty_produced: item.qty_produced,
-        qty_received: qtyMap[item.production_log_id],
+        qty_received: qtyMap[item.id],
         photo_url: photoUrl,
         gps_lat: gps.latitude,
         gps_lng: gps.longitude,
