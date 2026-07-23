@@ -791,15 +791,17 @@ Kembali ke Menu Utama
         receiver_name: namaPenerima
       }));
 
+      const attemptedIds = rows.map(r => r.production_log_id).join(', ');
       const { error } = await supabaseClient.from('delivery_logs').insert(rows);
-      if (error) throw error;
+      if (error) { error.attemptedIds = attemptedIds; error.attemptedLocation = activeGroup.location_nama; throw error; }
 
       showPopup('Laporan delivery berhasil disimpan.');
       backToStops();
     } catch (err) {
       statusEl.className = 'text-center text-[11px] font-bold uppercase tracking-widest mt-6 text-red-600';
       const detailParts = [err.message, err.details, err.hint, err.code].filter(Boolean);
-      statusEl.textContent = 'ERROR: ' + (detailParts.join(' | ') || 'Gagal menyimpan');
+      const extra = err.attemptedIds ? ` [lokasi: ${err.attemptedLocation} | id: ${err.attemptedIds}]` : '';
+      statusEl.textContent = 'ERROR: ' + (detailParts.join(' | ') || 'Gagal menyimpan') + extra;
       resetSlider();
     }
   }
