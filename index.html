@@ -85,8 +85,8 @@
 <div class="w-full max-w-md animate-in">
 <div class="flex flex-col items-center mb-8">
 <img alt="SM Catering Logo" class="h-20 w-auto mb-4 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzEbrf5tm-s_A4Xku__qVImcggP1XHK80M0kuTsaaBwwCJZDL_6Mw1wI7D9IT2FZB2NUY5eExaEWUKIVmv3lhmKdLt_jSXEIYL_QZHwVYdgZYUV39Cww_cmzEedDKmYhrtzoCCDR_S-oJzoff7faM2vbQx0-7nQf_B9o4DBWkMs2py3e4HdbTokoI1kTktQk0zUuhKC7BtRN7YGu9EuBBywbr1bQ_AYacW_UHiFo5FTheVslAEid7wrM5Z9UPvEMdDXQ4"/>
-<h1 class="heading-serif text-2xl font-bold text-[#001a72]">Portal Internal</h1>
-<p class="text-sm text-gray-500 mt-1">Masuk ke dashboard manajemen</p>
+<h1 class="heading-serif text-2xl font-bold text-[#001a72]">Operation Management System</h1>
+<p class="text-sm text-gray-500 mt-1">Sari Murni Catering</p>
 </div>
 <div class="glass-card rounded-[24px] p-8">
 <div class="hidden mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm flex items-start gap-3" id="error-login">
@@ -95,22 +95,27 @@
 </div>
 <div class="space-y-5">
 <div>
-<label class="block text-[13px] font-bold text-[#001a72] uppercase tracking-wider mb-2 ml-1" for="input-email">Email Karyawan</label>
+<label class="block text-[13px] font-bold text-[#001a72] uppercase tracking-wider mb-2 ml-1" for="input-email">Private Email</label>
 <input autocomplete="username" class="w-full h-[56px] px-4 rounded-xl border-gray-200 bg-gray-50/50 text-base transition-all" id="input-email" placeholder="nama@smc.com" type="email"/>
 </div>
 <div>
-<label class="block text-[13px] font-bold text-[#001a72] uppercase tracking-wider mb-2 ml-1" for="input-pin" id="label-pin">PIN / Password</label>
-<input autocomplete="current-password" class="w-full h-[56px] px-4 rounded-xl border-gray-200 bg-gray-50/50 text-base tracking-[0.2em] transition-all" id="input-pin" placeholder="Password" type="password"/>
+<label class="block text-[13px] font-bold text-[#001a72] uppercase tracking-wider mb-2 ml-1" for="input-pin" id="label-pin">PIN</label>
+<div class="relative">
+<input autocomplete="current-password" class="w-full h-[56px] px-4 pr-12 rounded-xl border-gray-200 bg-gray-50/50 text-base tracking-[0.2em] transition-all" id="input-pin" placeholder="Password" type="password"/>
+<button type="button" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#001a72] transition-colors" id="btn-toggle-pin" onclick="togglePinVisibility()" tabindex="-1">
+<span class="material-symbols-outlined text-[20px]">visibility_off</span>
+</button>
+</div>
 </div>
 <button class="btn-sm-primary w-full h-[60px] rounded-xl font-bold text-lg shadow-lg shadow-[#001a72]/10 mt-2" id="btn-masuk" onclick="submitLogin()">
           Masuk
         </button>
 <div class="pt-4 text-center">
 <button class="text-[13px] text-gray-400 hover:text-[#001a72] underline transition-colors" onclick="toggleAksesLain()">
-            Masalah akses atau superuser?
+            Lupa Password / PIN?
           </button>
 <p class="hidden mt-3 text-[12px] text-gray-500 leading-relaxed bg-blue-50/50 p-3 rounded-lg border border-blue-100 animate-in" id="hint-akses-lain">
-<strong>Admin/Superuser:</strong> Masukkan email pribadi (non-domain SM). Sistem otomatis mengganti mode PIN menjadi password teks biasa.
+Silahkan hubungi Admin Sari Murni Group
           </p>
 </div>
 </div>
@@ -218,13 +223,13 @@
     const pinField = document.getElementById('input-pin');
     const label = document.getElementById('label-pin');
     if (PIN_DOMAINS.test(email)) {
-      pinField.type = 'tel';
+      pinField.type = 'password';
       pinField.setAttribute('inputmode', 'numeric');
       pinField.setAttribute('pattern', '[0-9]*');
       pinField.setAttribute('maxlength', '6');
       pinField.placeholder = '••••••';
       pinField.style.letterSpacing = '0.6em';
-      label.textContent = 'PIN (6 digit)';
+      label.textContent = 'PIN';
     } else {
       pinField.type = 'password';
       pinField.removeAttribute('inputmode');
@@ -232,8 +237,26 @@
       pinField.removeAttribute('maxlength');
       pinField.placeholder = 'Password';
       pinField.style.letterSpacing = '0.1em';
-      label.textContent = 'PIN / Password';
+      label.textContent = 'Password Superuser';
     }
+    resetPinVisibility();
+  }
+
+  function togglePinVisibility() {
+    const pinField = document.getElementById('input-pin');
+    const icon = document.querySelector('#btn-toggle-pin span');
+    if (pinField.type === 'password') {
+      pinField.type = 'text';
+      icon.textContent = 'visibility';
+    } else {
+      pinField.type = 'password';
+      icon.textContent = 'visibility_off';
+    }
+  }
+
+  function resetPinVisibility() {
+    const icon = document.querySelector('#btn-toggle-pin span');
+    if (icon) icon.textContent = 'visibility_off';
   }
 
   function routeProfile(profile) {
