@@ -403,7 +403,7 @@ Kembali ke Menu Utama
 
     const { data: logsToday, error: logError } = await supabaseClient
       .from('production_logs')
-      .select('id, location_id, product_type, meal_time, qty_produced, input_by_nama')
+      .select('id, location_id, product_type, meal_time, qty_produced, input_by_nama, status, approver:users!approved_by(nama)')
       .eq('tanggal', tanggal)
       .in('location_id', locationIds);
     if (logError) return { error: logError.message };
@@ -414,11 +414,25 @@ Kembali ke Menu Utama
     if (logIds.length > 0) {
       const { data: deliveries } = await supabaseClient
         .from('delivery_logs')
-        .select('production_log_id, qty_received, retur, submitted_by_nama')
-        .in('production_log_id', logIds);
-      (deliveries || []).forEach(d => { routeDeliveries[d.production_log_id] = d; });
+        .select('production_log_id, qty_produced, qty_received, retur, submitted_by_nama, timestamp')
+        .in('production_log_id', logIds)
+        .order('timestamp', { ascending: true });
+      (deliveries || []).forEach(d => {
+        if (!routeDeliveries[d.production_log_id]) routeDeliveries[d.production_log_id] = [];
+        routeDeliveries[d.production_log_id].push(d);
+      });
     }
     return { error: null };
+  }
+
+  // Hitung status pengantaran untuk 1 production_log, berdasarkan SEMUA kunjungan
+  // delivery yang sudah tercatat (bukan cuma 1 kunjungan seperti sebelumnya).
+  function hitungSisa(item) {
+    const deliveries = routeDeliveries[item.id] || [];
+    const totalDiterima = deliveries.reduce((sum, d) => sum + d.qty_received, 0);
+    const totalRetur = deliveries.reduce((sum, d) => sum + (d.retur || 0), 0);
+    const sisa = item.qty_produced - totalDiterima;
+    return { deliveries, totalDiterima, totalRetur, sisa: sisa > 0 ? sisa : 0, selesai: sisa <= 0 && deliveries.length > 0 };
   }
 
   function renderJadwal() {
@@ -435,7 +449,7 @@ Kembali ke Menu Utama
     ['pagi', 'siang', 'malam'].forEach(jt => {
       const subset = routeLogs.filter(l => l.meal_time === jt);
       if (subset.length === 0) return;
-      const done = subset.filter(l => routeDeliveries[l.id]).length;
+      const done = subset.filter(l => hitungSisa(l).selesai).length;
       const warna = jadwalColor[jt];
       const isDone = done === subset.length;
 
@@ -501,25 +515,36 @@ Kembali ke Menu Utama
     container.innerHTML = '';
     currentGroups.forEach((group, idx) => {
       const item = group.items[0];
-      const totalQty = group.items.reduce((sum, i) => sum + i.qty_produced, 0);
-      const delivery = routeDeliveries[item.id];
+      const { deliveries, totalDiterima, totalRetur, sisa, selesai } = hitungSisa(item);
       const warna = produkColor[group.product_type];
 
       const card = document.createElement('div');
-      card.className = `relative card-premium p-5 flex items-center gap-4 border-l-4 ${warna.border} ${delivery ? '' : 'cursor-pointer'}`;
-      if (!delivery) card.onclick = () => bukaForm(idx);
+      card.className = `relative card-premium p-5 flex items-center gap-4 border-l-4 ${warna.border} ${selesai ? '' : 'cursor-pointer'}`;
+      if (!selesai) card.onclick = () => bukaForm(idx);
 
-      let metaHtml = `<p class="text-xs text-slate-400 mt-1 font-medium">Total ${totalQty} porsi • ${item.input_by_nama || 'System'}</p>`;
-      if (delivery) {
-        metaHtml += `<div class="flex flex-wrap gap-1.5 mt-2">
-          <span class="px-2 py-0.5 bg-emerald-50 text-[9px] font-bold text-emerald-600 rounded border border-emerald-100 uppercase tracking-tighter">${delivery.qty_received} Porsi</span>
-          ${delivery.submitted_by_nama ? `<span class="px-2 py-0.5 bg-sky-50 text-[9px] font-bold text-sky-600 rounded border border-sky-100 uppercase tracking-tighter">${delivery.submitted_by_nama}</span>` : ''}
-          ${delivery.retur > 0 ? `<span class="px-2 py-0.5 bg-amber-50 text-[9px] font-bold text-amber-700 rounded border border-amber-100 uppercase tracking-tighter">Retur: ${delivery.retur}</span>` : ''}
-        </div>`;
+      let badgeRow = '';
+      if (item.status === 'approved' && item.approver && item.approver.nama) {
+        badgeRow += `<span class="px-2 py-0.5 bg-teal-600 text-white text-[9px] font-bold rounded uppercase tracking-tighter">✓ Disetujui: ${item.approver.nama}</span>`;
       }
+      if (deliveries.length > 0) {
+        badgeRow += `<span class="px-2 py-0.5 bg-emerald-50 text-[9px] font-bold text-emerald-600 rounded border border-emerald-100 uppercase tracking-tighter">${totalDiterima} Porsi Terkirim</span>`;
+        const namaKurir = [...new Set(deliveries.map(d => d.submitted_by_nama).filter(Boolean))];
+        namaKurir.forEach(n => {
+          badgeRow += `<span class="px-2 py-0.5 bg-sky-50 text-[9px] font-bold text-sky-600 rounded border border-sky-100 uppercase tracking-tighter">${n}</span>`;
+        });
+        if (totalRetur > 0) {
+          badgeRow += `<span class="px-2 py-0.5 bg-amber-50 text-[9px] font-bold text-amber-700 rounded border border-amber-100 uppercase tracking-tighter">Retur: ${totalRetur}</span>`;
+        }
+      }
+      if (sisa > 0) {
+        badgeRow += `<span class="px-2 py-0.5 bg-orange-100 text-[9px] font-bold text-orange-700 rounded border border-orange-200 uppercase tracking-tighter">Sisa: ${sisa} Porsi</span>`;
+      }
+      const totalQty = group.items.reduce((sum, i) => sum + i.qty_produced, 0);
+      let metaHtml = `<p class="text-xs text-slate-400 mt-1 font-medium">Total ${totalQty} porsi • ${item.input_by_nama || 'System'}</p>`;
+      if (badgeRow) metaHtml += `<div class="flex flex-wrap gap-1.5 mt-2">${badgeRow}</div>`;
 
       card.innerHTML = `
-        ${delivery ? `<div class="absolute top-3 right-3 z-10"><div class="w-7 h-7 rounded-full bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center"><span class="material-symbols-outlined text-emerald-500 text-base font-bold">check</span></div></div>` : ''}
+        ${selesai ? `<div class="absolute top-3 right-3 z-10"><div class="w-7 h-7 rounded-full bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center"><span class="material-symbols-outlined text-emerald-500 text-base font-bold">check</span></div></div>` : ''}
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-1.5">
             <span class="text-[9px] font-bold ${jadwalColor[group.meal_time].badge} px-2 py-0.5 rounded uppercase tracking-widest">${namaMeal[group.meal_time]}</span>
@@ -528,7 +553,7 @@ Kembali ke Menu Utama
           <h3 class="font-bold text-sm-blue text-base">${group.location_nama}</h3>
           ${metaHtml}
         </div>
-        ${delivery ? '' : '<div class="text-slate-300"><span class="material-symbols-outlined">chevron_right</span></div>'}
+        ${selesai ? '' : '<div class="text-slate-300"><span class="material-symbols-outlined">chevron_right</span></div>'}
       `;
       container.appendChild(card);
     });
@@ -561,11 +586,17 @@ Kembali ke Menu Utama
 
   function renderForm() {
     const container = document.getElementById('form-container');
+    const approvedItem = activeGroup.items[0];
+    const approvedBadge = (approvedItem.status === 'approved' && approvedItem.approver && approvedItem.approver.nama)
+      ? `<span class="inline-block mt-2 px-2 py-0.5 bg-teal-600 text-white text-[9px] font-bold rounded uppercase tracking-tighter">✓ Disetujui: ${approvedItem.approver.nama}</span>`
+      : '';
+
     container.innerHTML = `
       <div class="card-premium p-6">
         <div class="mb-4">
           <h2 class="font-serif text-2xl text-sm-blue font-bold">${activeGroup.location_nama}</h2>
           <p class="text-[11px] text-slate-500 mt-1 uppercase tracking-[0.15em] font-bold">${namaProduk[activeGroup.product_type]} • ${namaMeal[activeGroup.meal_time]}</p>
+          ${approvedBadge}
         </div>
         <div class="space-y-4 pt-4 border-t border-slate-100" id="items-inputs"></div>
       </div>
@@ -611,16 +642,29 @@ Kembali ke Menu Utama
 
     const itemsContainer = document.getElementById('items-inputs');
     activeGroup.items.forEach(item => {
+      const { deliveries, totalDiterima, sisa } = hitungSisa(item);
       const itemRow = document.createElement('div');
-      itemRow.className = 'flex items-center justify-between gap-4 py-2';
+      itemRow.className = 'flex flex-col gap-2 py-2';
+
+      let historyHtml = '';
+      if (deliveries.length > 0) {
+        historyHtml = `<div class="bg-slate-50 rounded-lg p-2.5 space-y-1">
+          <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Riwayat Kunjungan</p>
+          ${deliveries.map(d => `<p class="text-[10px] text-slate-500">• ${d.qty_received} porsi diterima — ${d.submitted_by_nama || 'Kurir'}</p>`).join('')}
+        </div>`;
+      }
+
       itemRow.innerHTML = `
-        <div class="flex-1">
-          <div class="text-sm font-bold text-slate-700">Produksi: ${item.qty_produced}</div>
-          <div id="retur-${item.id}" class="text-[10px] font-bold uppercase mt-1"></div>
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex-1">
+            <div class="text-sm font-bold text-slate-700">Sisa: ${sisa} <span class="text-slate-400 font-medium text-xs">(Produksi ${item.qty_produced}${totalDiterima > 0 ? ` • Sudah ${totalDiterima}` : ''})</span></div>
+            <div id="retur-${item.id}" class="text-[10px] font-bold uppercase mt-1"></div>
+          </div>
+          <div class="w-24">
+            <input type="number" id="terima-${item.id}" placeholder="0" class="w-full text-center font-bold text-sm-blue text-lg" oninput="updateRetur('${item.id}', ${sisa})">
+          </div>
         </div>
-        <div class="w-24">
-          <input type="number" id="terima-${item.id}" placeholder="0" class="w-full text-center font-bold text-sm-blue text-lg" oninput="updateRetur('${item.id}', ${item.qty_produced})">
-        </div>
+        ${historyHtml}
       `;
       itemsContainer.appendChild(itemRow);
     });
@@ -872,7 +916,7 @@ Kembali ke Menu Utama
       const groupId = crypto.randomUUID();
       const rows = activeGroup.items.map(item => ({
         production_log_id: item.id,
-        qty_produced: item.qty_produced,
+        qty_produced: hitungSisa(item).sisa,
         qty_received: qtyMap[item.id],
         photo_url: photoUrl,
         gps_lat: gps.latitude,
