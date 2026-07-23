@@ -69,11 +69,8 @@
 </div>
 </header>
 
-<div class="bg-sm-blue-dark px-4 py-3 text-center shadow-lg border-t border-white/5">
-  <div class="flex flex-col items-center">
-    <span class="text-sm-gold text-[10px] font-bold tracking-[0.2em] uppercase mb-0.5">Input Produksi</span>
-    <span class="text-white/60 text-[9px] font-medium tracking-wider uppercase" id="progress-bar">Sinkronisasi Data...</span>
-  </div>
+<div class="bg-sm-blue-dark px-4 py-3.5 text-center shadow-lg border-t border-white/5">
+  <span class="text-sm-gold text-xs font-bold tracking-[0.2em] uppercase">Input Produksi</span>
 </div>
 
 <div class="max-w-md mx-auto px-5 pt-4 hidden" id="menu-link">
@@ -82,12 +79,24 @@
     Kembali ke Menu Utama
   </a>
 </div>
-<main class="max-w-md mx-auto px-5 pb-12 pt-6 min-h-screen" id="main-content">
+<main class="max-w-md mx-auto px-5 pb-28 pt-6 min-h-screen" id="main-content">
   <div class="flex flex-col items-center justify-center py-20 text-slate-400 italic" id="loading">
     <div class="w-10 h-10 border-4 border-sm-gold/20 border-t-sm-gold rounded-full animate-spin mb-4"></div>
     <p class="font-serif text-sm-blue">Memuat data produksi...</p>
   </div>
 </main>
+
+<div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] z-40">
+  <div class="max-w-md mx-auto px-5 py-3">
+    <div class="flex items-center justify-between mb-1.5">
+      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" id="progress-date">Memuat...</span>
+      <span class="text-[10px] font-bold text-sm-blue uppercase tracking-wider" id="progress-count"></span>
+    </div>
+    <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+      <div class="h-full bg-gradient-to-r from-sm-blue to-sm-gold rounded-full transition-all duration-500 ease-out" id="progress-fill" style="width: 0%"></div>
+    </div>
+  </div>
+</div>
 
 <!-- Popup Overlay -->
 <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 hidden" id="popup-overlay">
@@ -169,6 +178,16 @@
     return { total, done };
   }
 
+  function updateProgressBar(overall) {
+    const pct = overall.total > 0 ? Math.round((overall.done / overall.total) * 100) : 0;
+    const dateEl = document.getElementById('progress-date');
+    const countEl = document.getElementById('progress-count');
+    const fillEl = document.getElementById('progress-fill');
+    if (dateEl) dateEl.textContent = selectedDate;
+    if (countEl) countEl.textContent = `${overall.done}/${overall.total} Selesai`;
+    if (fillEl) fillEl.style.width = pct + '%';
+  }
+
   async function loadData(tanggal) {
     selectedDate = tanggal || todayStr();
     document.getElementById('main-content').innerHTML = `
@@ -205,7 +224,7 @@
     if (logIds.length > 0) {
       const { data: deliveries } = await supabaseClient
         .from('delivery_logs')
-        .select('production_log_id, qty_received, submitted_by_nama, receiver_status')
+        .select('production_log_id, qty_received, retur, submitted_by_nama, receiver_status')
         .in('production_log_id', logIds);
       if (deliveries) {
         deliveries.forEach(d => { deliveriesByLogId[d.production_log_id] = d; });
@@ -223,7 +242,7 @@
 
     logsForDate = logsToday;
     const overall = hitungProgress(scopedLP);
-    document.getElementById('progress-bar').textContent = `${selectedDate} • ${overall.done}/${overall.total} SELESAI`;
+    updateProgressBar(overall);
 
     selectedProduct = null;
     selectedJadwal = null;
@@ -242,7 +261,7 @@
       if (logIds.length > 0) {
         const { data: deliveries } = await supabaseClient
           .from('delivery_logs')
-          .select('production_log_id, qty_received, submitted_by_nama, receiver_status')
+          .select('production_log_id, qty_received, retur, submitted_by_nama, receiver_status')
           .in('production_log_id', logIds);
         if (deliveries) {
           deliveries.forEach(d => { deliveriesByLogId[d.production_log_id] = d; });
@@ -251,7 +270,7 @@
       window.deliveriesByLogId = deliveriesByLogId;
     }
     const overall = hitungProgress(scopedLP);
-    document.getElementById('progress-bar').textContent = `${selectedDate} • ${overall.done}/${overall.total} SELESAI`;
+    updateProgressBar(overall);
     renderFn();
   }
 
@@ -270,8 +289,6 @@
     headerSec.className = 'mb-6';
     headerSec.innerHTML = `
       <div class="flex items-center gap-4 mb-6">
-        <img alt="SM Catering" class="h-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAv3PSlehUTSYb8hY2KgLTodnuUG-OoYe8mfhuadrLC9bKk0qAbdP2CRtosA27D1dGLc-EWsJUf5-FWsk82rN4k06wScGFqoF41lw71tVRiiYjIxJOe2I1H8bqZavTwVif6GW7Hp9ATjJVjBJNWU-iaXrSrM0uj-r8KbbbUz69V28AuPst0_yyRPeYEkfksq5CXo_tVvxB0fc-J2Nrdv36Lqv0y6os1eDlRwKzx8oUc_R9LPT6khDIXUWIBGWYE-sL2ki8">
-        <div class="h-8 w-px bg-slate-200"></div>
         <h2 class="font-serif text-2xl text-sm-blue font-bold">Produksi</h2>
       </div>
       <p class="text-slate-500 text-sm leading-relaxed">Pilih kategori menu untuk mulai mencatat jumlah produksi hari ini.</p>
@@ -431,7 +448,18 @@
       const log = findLog(lp.location_id, lp.product_type, lp.meal_time);
 
       const card = document.createElement('div');
-      card.className = `card-premium overflow-hidden border-l-4 ${log ? 'border-l-emerald-500' : 'border-l-slate-200'}`;
+      card.className = `relative card-premium overflow-hidden border-l-4 ${log ? 'border-l-emerald-500' : 'border-l-slate-200'}`;
+
+      if (log && log.status === 'approved') {
+        const stamp = document.createElement('div');
+        stamp.className = 'absolute top-3 right-3 pointer-events-none z-10';
+        stamp.innerHTML = `
+          <div class="w-7 h-7 rounded-full bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center">
+            <span class="material-symbols-outlined text-emerald-500 text-base font-bold">check</span>
+          </div>
+        `;
+        card.appendChild(stamp);
+      }
 
       const mainSection = document.createElement('div');
       mainSection.className = 'p-5 flex items-center justify-between gap-4';
@@ -454,11 +482,17 @@
       meta.className = 'bg-slate-50/50 px-5 py-2.5 border-t border-slate-100 flex flex-wrap gap-2 items-center';
       let metaHtml = '';
       if (log && log.input_by_nama) {
-        metaHtml += `<span class="px-2 py-0.5 bg-white text-[9px] font-bold text-slate-500 rounded border border-slate-200 uppercase tracking-tighter">PIC: ${log.input_by_nama}</span>`;
+        metaHtml += `<span class="px-2 py-0.5 bg-white text-[9px] font-bold text-slate-500 rounded border border-slate-200 uppercase tracking-tighter">${log.input_by_nama}</span>`;
       }
       const delivery = log ? (window.deliveriesByLogId || {})[log.id] : null;
       if (delivery) {
-        metaHtml += `<span class="px-2 py-0.5 bg-emerald-50 text-[9px] font-bold text-emerald-600 rounded border border-emerald-100 uppercase tracking-tighter">Diterima: ${delivery.qty_received}</span>`;
+        metaHtml += `<span class="px-2 py-0.5 bg-emerald-50 text-[9px] font-bold text-emerald-600 rounded border border-emerald-100 uppercase tracking-tighter">${delivery.qty_received} Porsi</span>`;
+        if (delivery.submitted_by_nama) {
+          metaHtml += `<span class="px-2 py-0.5 bg-sky-50 text-[9px] font-bold text-sky-600 rounded border border-sky-100 uppercase tracking-tighter">${delivery.submitted_by_nama}</span>`;
+        }
+        if (delivery.retur > 0) {
+          metaHtml += `<span class="px-2 py-0.5 bg-amber-50 text-[9px] font-bold text-amber-700 rounded border border-amber-100 uppercase tracking-tighter">Retur: ${delivery.retur}</span>`;
+        }
       }
       if (!metaHtml) metaHtml = '<span class="text-[9px] text-slate-400 italic uppercase font-bold tracking-tighter">Status: Belum Input</span>';
       meta.innerHTML = metaHtml;

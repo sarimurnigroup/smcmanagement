@@ -218,6 +218,12 @@ Kembali ke Menu Utama
 <div class="h-32 bg-slate-100 rounded-2xl animate-pulse"></div>
 </div>
 </div>
+<!-- Jadwal Selection Screen -->
+<div class="hidden animate-fade-up" id="screen-jadwal">
+<h2 class="font-serif text-2xl text-sm-blue font-bold mb-1">Pilih Jadwal</h2>
+<p class="text-slate-500 text-sm mb-6">Pilih waktu makan untuk kelola pengantaran.</p>
+<div class="space-y-4" id="jadwal-list"></div>
+</div>
 <!-- Stops List Screen -->
 <div class="hidden animate-fade-up" id="screen-stops">
 <div class="flex items-center justify-between mb-4 hidden">
@@ -256,6 +262,9 @@ Kembali ke Menu Utama
 
   let currentProfile = null;
   let selectedRoute = null;
+  let selectedJadwal = null;
+  let routeLogs = [];
+  let routeDeliveries = {};
   let currentGroups = [];
   let activeGroup = null;
   let selectedPhotoBlob = null;
@@ -264,6 +273,15 @@ Kembali ke Menu Utama
 
   const namaMeal = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
   const namaProduk = { tahanan: 'Tahanan', anggota: 'Anggota' };
+  const jadwalColor = {
+    pagi: { border: 'border-l-amber-400', iconBg: 'bg-amber-50', iconText: 'text-amber-600', badge: 'bg-amber-50 text-amber-700', icon: 'wb_twilight' },
+    siang: { border: 'border-l-sky-400', iconBg: 'bg-sky-50', iconText: 'text-sky-600', badge: 'bg-sky-50 text-sky-700', icon: 'light_mode' },
+    malam: { border: 'border-l-indigo-400', iconBg: 'bg-indigo-50', iconText: 'text-indigo-600', badge: 'bg-indigo-50 text-indigo-700', icon: 'dark_mode' }
+  };
+  const produkColor = {
+    tahanan: { border: 'border-l-rose-400', badge: 'bg-rose-500 text-white' },
+    anggota: { border: 'border-l-violet-400', badge: 'bg-violet-500 text-white' }
+  };
 
   function todayStr() {
     const d = new Date();
@@ -271,13 +289,16 @@ Kembali ke Menu Utama
   }
 
   function isMitraHomeScreen() {
-    return currentProfile && currentProfile.role === 'produksi_delivery' && currentActiveScreenId === 'screen-stops';
+    return currentProfile && currentProfile.role === 'produksi_delivery' && currentActiveScreenId === 'screen-jadwal';
   }
 
   function handleGlobalBack() {
     if (currentActiveScreenId === 'screen-form') {
       backToStops();
-    } else if (currentActiveScreenId === 'screen-stops' && !isMitraHomeScreen()) {
+    } else if (currentActiveScreenId === 'screen-stops') {
+      showScreen('screen-jadwal');
+      renderJadwal();
+    } else if (currentActiveScreenId === 'screen-jadwal' && !isMitraHomeScreen()) {
       showScreen('screen-route');
     } else {
       window.location.href = 'index.html';
@@ -295,7 +316,7 @@ Kembali ke Menu Utama
 
   function showScreen(id) {
     currentActiveScreenId = id;
-    document.querySelectorAll('main > div').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('main > div[id^="screen-"]').forEach(el => el.classList.add('hidden'));
     document.getElementById(id).classList.remove('hidden');
     window.scrollTo(0, 0);
     updateBackButton();
@@ -347,30 +368,37 @@ Kembali ke Menu Utama
   async function pilihRute(route) {
     selectedRoute = route;
     document.getElementById('route-tag').textContent = 'Rute ' + route.nama;
-    showScreen('screen-stops');
-    document.getElementById('stops-list').innerHTML = `
+    showScreen('screen-jadwal');
+    document.getElementById('jadwal-list').innerHTML = `
       <div class="py-12 flex flex-col items-center">
         <div class="w-10 h-10 border-4 border-sm-blue/10 border-t-sm-blue rounded-full animate-spin"></div>
-        <p class="mt-4 text-sm text-slate-400 font-medium">Memuat rute...</p>
+        <p class="mt-4 text-sm text-slate-400 font-medium">Memuat jadwal...</p>
       </div>`;
-    await loadStops();
-  }
-
-  async function loadStops() {
-    const tanggal = todayStr();
-    const { data: locations, error: locError } = await supabaseClient.from('locations').select('id, nama').eq('route_id', selectedRoute.id);
-    if (locError) {
-      document.getElementById('stops-list').innerHTML = '<div class="p-4 bg-red-50 text-red-600 rounded-xl text-sm">' + locError.message + '</div>';
+    const result = await fetchRouteData();
+    if (result.error) {
+      document.getElementById('jadwal-list').innerHTML = '<div class="p-4 bg-red-50 text-red-600 rounded-xl text-sm">' + result.error + '</div>';
       return;
     }
+    renderJadwal();
+  }
 
-    const locationIds = locations.map(l => l.id);
+  // Ambil semua lokasi + log produksi + log delivery buat SELURUH rute hari ini (satu kali fetch).
+  // Hasilnya dipakai bareng oleh layar Pilih Jadwal (hitung progress per waktu makan)
+  // dan layar Daftar Stop (filter per jadwal yang dipilih) - gak perlu fetch ulang tiap ganti jadwal.
+  async function fetchRouteData() {
+    const tanggal = todayStr();
+    const { data: locations, error: locError } = await supabaseClient.from('locations').select('id, nama').eq('route_id', selectedRoute.id);
+    if (locError) return { error: locError.message };
+
     const locNameMap = {};
     locations.forEach(l => { locNameMap[l.id] = l.nama; });
+    window.locNameMap = locNameMap;
 
+    const locationIds = locations.map(l => l.id);
     if (locationIds.length === 0) {
-      document.getElementById('stops-list').innerHTML = '<div class="text-center py-12 text-slate-400 text-sm">Tidak ada lokasi di rute ini.</div>';
-      return;
+      routeLogs = [];
+      routeDeliveries = {};
+      return { error: null };
     }
 
     const { data: logsToday, error: logError } = await supabaseClient
@@ -378,41 +406,82 @@ Kembali ke Menu Utama
       .select('id, location_id, product_type, meal_time, qty_produced, input_by_nama')
       .eq('tanggal', tanggal)
       .in('location_id', locationIds);
+    if (logError) return { error: logError.message };
+    routeLogs = logsToday || [];
 
-    if (logError || logsToday.length === 0) {
-      document.getElementById('stops-list').innerHTML = `<div class="text-center py-12 px-6">
+    const logIds = routeLogs.map(l => l.id);
+    routeDeliveries = {};
+    if (logIds.length > 0) {
+      const { data: deliveries } = await supabaseClient
+        .from('delivery_logs')
+        .select('production_log_id, qty_received, retur, submitted_by_nama')
+        .in('production_log_id', logIds);
+      (deliveries || []).forEach(d => { routeDeliveries[d.production_log_id] = d; });
+    }
+    return { error: null };
+  }
+
+  function renderJadwal() {
+    const container = document.getElementById('jadwal-list');
+    if (routeLogs.length === 0) {
+      container.innerHTML = `<div class="text-center py-12 px-6">
         <span class="material-symbols-outlined text-4xl text-slate-200 mb-2">pending_actions</span>
-        <p class="text-slate-400 text-sm">${logError ? logError.message : 'Belum ada data produksi hari ini. Hubungi tim produksi.'}</p>
+        <p class="text-slate-400 text-sm">Belum ada data produksi hari ini. Hubungi tim produksi.</p>
       </div>`;
       return;
     }
 
-    const { data: deliveredLogs } = await supabaseClient.from('delivery_logs').select('production_log_id').in('production_log_id', logsToday.map(l => l.id));
-    const deliveredSet = new Set(deliveredLogs.map(d => d.production_log_id));
-    const pending = logsToday.filter(l => !deliveredSet.has(l.id));
+    container.innerHTML = '';
+    ['pagi', 'siang', 'malam'].forEach(jt => {
+      const subset = routeLogs.filter(l => l.meal_time === jt);
+      if (subset.length === 0) return;
+      const done = subset.filter(l => routeDeliveries[l.id]).length;
+      const warna = jadwalColor[jt];
+      const isDone = done === subset.length;
 
+      const card = document.createElement('button');
+      card.className = `w-full text-left card-premium p-5 flex items-center justify-between border-l-4 ${warna.border}`;
+      card.innerHTML = `
+        <div class="flex items-center gap-4">
+          <div class="w-11 h-11 rounded-full ${warna.iconBg} ${warna.iconText} flex items-center justify-center">
+            <span class="material-symbols-outlined text-xl">${warna.icon}</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm-blue text-base">${namaMeal[jt]}</h3>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${done} dari ${subset.length} Selesai</p>
+          </div>
+        </div>
+        ${isDone ? '<span class="material-symbols-outlined text-emerald-500 font-bold">check_circle</span>' : '<span class="material-symbols-outlined text-slate-300">chevron_right</span>'}
+      `;
+      card.onclick = () => pilihJadwal(jt);
+      container.appendChild(card);
+    });
+  }
+
+  function pilihJadwal(jt) {
+    selectedJadwal = jt;
+    buildGroupsForJadwal(jt);
+    showScreen('screen-stops');
+    renderStops();
+  }
+
+  function buildGroupsForJadwal(jt) {
+    const subset = routeLogs.filter(l => l.meal_time === jt);
     const groups = {};
-    pending.forEach(item => {
-      const key = `${item.location_id}-${item.product_type}-${item.meal_time}`;
+    subset.forEach(item => {
+      const key = `${item.location_id}-${item.product_type}`;
       if (!groups[key]) {
         groups[key] = {
           location_id: item.location_id,
-          location_nama: locNameMap[item.location_id],
+          location_nama: window.locNameMap[item.location_id],
           product_type: item.product_type,
-          meal_time: item.meal_time,
+          meal_time: jt,
           items: []
         };
       }
       groups[key].items.push(item);
     });
-
-    const urutanJadwal = { pagi: 0, siang: 1, malam: 2 };
-    currentGroups = Object.values(groups).sort((a, b) => {
-      const byNama = a.location_nama.localeCompare(b.location_nama);
-      return byNama !== 0 ? byNama : urutanJadwal[a.meal_time] - urutanJadwal[b.meal_time];
-    });
-
-    renderStops();
+    currentGroups = Object.values(groups).sort((a, b) => a.location_nama.localeCompare(b.location_nama));
   }
 
   function renderStops() {
@@ -431,22 +500,35 @@ Kembali ke Menu Utama
 
     container.innerHTML = '';
     currentGroups.forEach((group, idx) => {
+      const item = group.items[0];
       const totalQty = group.items.reduce((sum, i) => sum + i.qty_produced, 0);
+      const delivery = routeDeliveries[item.id];
+      const warna = produkColor[group.product_type];
+
       const card = document.createElement('div');
-      card.className = 'card-premium p-5 flex items-center gap-4 cursor-pointer';
-      card.onclick = () => bukaForm(idx);
+      card.className = `relative card-premium p-5 flex items-center gap-4 border-l-4 ${warna.border} ${delivery ? '' : 'cursor-pointer'}`;
+      if (!delivery) card.onclick = () => bukaForm(idx);
+
+      let metaHtml = `<p class="text-xs text-slate-400 mt-1 font-medium">Total ${totalQty} porsi • ${item.input_by_nama || 'System'}</p>`;
+      if (delivery) {
+        metaHtml += `<div class="flex flex-wrap gap-1.5 mt-2">
+          <span class="px-2 py-0.5 bg-emerald-50 text-[9px] font-bold text-emerald-600 rounded border border-emerald-100 uppercase tracking-tighter">${delivery.qty_received} Porsi</span>
+          ${delivery.submitted_by_nama ? `<span class="px-2 py-0.5 bg-sky-50 text-[9px] font-bold text-sky-600 rounded border border-sky-100 uppercase tracking-tighter">${delivery.submitted_by_nama}</span>` : ''}
+          ${delivery.retur > 0 ? `<span class="px-2 py-0.5 bg-amber-50 text-[9px] font-bold text-amber-700 rounded border border-amber-100 uppercase tracking-tighter">Retur: ${delivery.retur}</span>` : ''}
+        </div>`;
+      }
+
       card.innerHTML = `
+        ${delivery ? `<div class="absolute top-3 right-3 z-10"><div class="w-7 h-7 rounded-full bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center"><span class="material-symbols-outlined text-emerald-500 text-base font-bold">check</span></div></div>` : ''}
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-1.5">
-            <span class="text-[9px] font-bold bg-primary/5 text-primary px-2 py-0.5 rounded uppercase tracking-widest">${namaMeal[group.meal_time]}</span>
-            <span class="text-[9px] font-bold bg-sm-gold/10 text-sm-gold px-2 py-0.5 rounded uppercase tracking-widest">${namaProduk[group.product_type]}</span>
+            <span class="text-[9px] font-bold ${jadwalColor[group.meal_time].badge} px-2 py-0.5 rounded uppercase tracking-widest">${namaMeal[group.meal_time]}</span>
+            <span class="text-[9px] font-bold ${warna.badge} px-2 py-0.5 rounded uppercase tracking-widest">${namaProduk[group.product_type]}</span>
           </div>
           <h3 class="font-bold text-sm-blue text-base">${group.location_nama}</h3>
-          <p class="text-xs text-slate-400 mt-1 font-medium">Total ${totalQty} porsi • ${group.items[0].input_by_nama || 'System'}</p>
+          ${metaHtml}
         </div>
-        <div class="text-slate-300">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </div>
+        ${delivery ? '' : '<div class="text-slate-300"><span class="material-symbols-outlined">chevron_right</span></div>'}
       `;
       container.appendChild(card);
     });
@@ -460,10 +542,21 @@ Kembali ke Menu Utama
     renderForm();
   }
 
-  function backToStops() {
+  async function backToStops() {
     activeGroup = null;
     showScreen('screen-stops');
-    loadStops();
+    document.getElementById('stops-list').innerHTML = `
+      <div class="py-12 flex flex-col items-center">
+        <div class="w-10 h-10 border-4 border-sm-blue/10 border-t-sm-blue rounded-full animate-spin"></div>
+        <p class="mt-4 text-sm text-slate-400 font-medium">Memuat ulang...</p>
+      </div>`;
+    const result = await fetchRouteData();
+    if (result.error) {
+      document.getElementById('stops-list').innerHTML = '<div class="p-4 bg-red-50 text-red-600 rounded-xl text-sm">' + result.error + '</div>';
+      return;
+    }
+    buildGroupsForJadwal(selectedJadwal);
+    renderStops();
   }
 
   function renderForm() {
