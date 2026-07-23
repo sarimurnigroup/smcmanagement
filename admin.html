@@ -210,6 +210,7 @@
 <option value="">Semua Status</option>
 <option value="belum_produksi">Belum Diproduksi</option>
 <option value="siap_kirim">Siap Kirim</option>
+<option value="sebagian">Terkirim Sebagian</option>
 <option value="terkirim">Terkirim</option>
 <option value="selesai">Selesai</option>
 </select>
@@ -409,6 +410,7 @@
             if (!row.log_id) return { key: 'belum_produksi', label: 'Belum Produksi', cls: 'bg-surface-container-highest text-outline' };
             const sudahDikirim = row.qty_received !== null;
             if (row.status === 'approved') return { key: 'selesai', label: 'Selesai', cls: 'bg-done-bg text-done-text border border-done-text/20' };
+            if (sudahDikirim && row.qty_received < row.qty_produced) return { key: 'sebagian', label: 'Terkirim Sebagian', cls: 'bg-orange-100 text-orange-700 border border-orange-200' };
             if (sudahDikirim) return { key: 'terkirim', label: 'Terkirim', cls: 'bg-secondary-container text-on-secondary-container' };
             return { key: 'siap_kirim', label: 'Siap Kirim', cls: 'bg-sm-gold/20 text-secondary-fixed-dim border border-sm-gold' };
         }
@@ -429,13 +431,15 @@
             const logIds = pl.map(p => p.id);
             let dl = [];
             if (logIds.length > 0) {
-                const { data: dls } = await supabaseClient.from('delivery_logs').select('production_log_id, qty_received, retur, photo_url, gps_lat, gps_lng, receiver_name, users!submitted_by(nama)').in('production_log_id', logIds);
+                const { data: dls } = await supabaseClient.from('delivery_logs').select('production_log_id, qty_received, retur, photo_url, gps_lat, gps_lng, receiver_name, timestamp, users!submitted_by(nama)').in('production_log_id', logIds).order('timestamp', { ascending: true });
                 dl = dls || [];
             }
 
             currentRows = lp.map(item => {
                 const prod = pl.find(p => p.location_id === item.location_id && p.product_type === item.product_type && p.meal_time === item.meal_time);
-                const delivery = prod ? dl.find(d => d.production_log_id === prod.id) : null;
+                const deliveries = prod ? dl.filter(d => d.production_log_id === prod.id) : [];
+                const lastDelivery = deliveries.length > 0 ? deliveries[deliveries.length - 1] : null;
+                const namaKurirList = [...new Set(deliveries.map(d => d.users?.nama).filter(Boolean))];
                 return {
                     location_nama: item.locations.nama,
                     product_type: item.product_type,
@@ -445,13 +449,14 @@
                     status: prod ? prod.status : null,
                     input_by_nama: prod?.users?.nama,
                     approved_by_nama: prod?.approved_user?.nama,
-                    delivered_by_nama: delivery?.users?.nama,
-                    qty_received: delivery ? delivery.qty_received : null,
-                    retur: delivery ? delivery.retur : null,
-                    receiver_name: delivery ? delivery.receiver_name : null,
-                    photo_url: delivery ? delivery.photo_url : null,
-                    gps_lat: delivery ? delivery.gps_lat : null,
-                    gps_lng: delivery ? delivery.gps_lng : null
+                    delivered_by_nama: namaKurirList.length > 0 ? namaKurirList.join(', ') : null,
+                    qty_received: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + d.qty_received, 0) : null,
+                    retur: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + (d.retur || 0), 0) : null,
+                    jumlah_kunjungan: deliveries.length,
+                    receiver_name: lastDelivery ? lastDelivery.receiver_name : null,
+                    photo_url: lastDelivery ? lastDelivery.photo_url : null,
+                    gps_lat: lastDelivery ? lastDelivery.gps_lat : null,
+                    gps_lng: lastDelivery ? lastDelivery.gps_lng : null
                 };
             });
 
@@ -517,7 +522,7 @@
                     <td class="p-4 text-xs font-medium">${row.input_by_nama || '—'}</td>
                     <td class="p-4 text-xs font-medium">${row.approved_by_nama || '—'}</td>
                     <td class="p-4 text-xs font-medium">${row.delivered_by_nama || '—'}</td>
-                    <td class="p-4 font-bold">${row.qty_received ?? '—'}</td>
+                    <td class="p-4 font-bold">${row.qty_received ?? '—'}${row.jumlah_kunjungan > 1 ? `<span class="ml-1 text-[9px] font-bold text-sm-gold align-top">×${row.jumlah_kunjungan}</span>` : ''}</td>
                     <td class="p-4"><span class="${row.retur > 0 ? 'text-error font-bold' : 'text-outline-variant'}">${row.retur ?? '—'}</span></td>
                     <td class="p-4 text-xs italic">${row.receiver_name || '—'}</td>
                     <td class="p-4">${mediaActions}</td>
@@ -668,15 +673,15 @@
 
             const rows = lp.map(item => {
                 const prod = pl.find(p => p.location_id === item.location_id && p.product_type === item.product_type && p.meal_time === item.meal_time);
-                const delivery = prod ? dl.find(d => d.production_log_id === prod.id) : null;
+                const deliveries = prod ? dl.filter(d => d.production_log_id === prod.id) : [];
                 return {
                     location_nama: item.locations.nama,
                     product_type: item.product_type,
                     meal_time: item.meal_time,
                     qty_produced: prod ? prod.qty_produced : null,
                     status: prod ? prod.status : null,
-                    qty_received: delivery ? delivery.qty_received : null,
-                    retur: delivery ? delivery.retur : null
+                    qty_received: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + d.qty_received, 0) : null,
+                    retur: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + (d.retur || 0), 0) : null
                 };
             });
 
@@ -776,18 +781,21 @@
                 dl = dls || [];
             }
             const deliveryByLog = {};
-            dl.forEach(d => { deliveryByLog[d.production_log_id] = d; });
+            dl.forEach(d => {
+                if (!deliveryByLog[d.production_log_id]) deliveryByLog[d.production_log_id] = [];
+                deliveryByLog[d.production_log_id].push(d);
+            });
 
             const agg = {};
             pl.forEach(row => {
                 const key = `${row.locations.nama}|${row.product_type}`;
                 if (!agg[key]) agg[key] = { location: row.locations.nama, product: row.product_type, qty_produced: 0, qty_received: 0, retur: 0 };
                 agg[key].qty_produced += row.qty_produced;
-                const d = deliveryByLog[row.id];
-                if (d) {
+                const ds = deliveryByLog[row.id] || [];
+                ds.forEach(d => {
                     agg[key].qty_received += d.qty_received;
-                    agg[key].retur += d.retur;
-                }
+                    agg[key].retur += (d.retur || 0);
+                });
             });
 
             const rows = Object.values(agg).sort((a, b) => a.location.localeCompare(b.location) || a.product.localeCompare(b.product));

@@ -224,10 +224,14 @@
     if (logIds.length > 0) {
       const { data: deliveries } = await supabaseClient
         .from('delivery_logs')
-        .select('production_log_id, qty_received, retur, submitted_by_nama, receiver_status')
-        .in('production_log_id', logIds);
+        .select('production_log_id, qty_received, retur, submitted_by_nama, receiver_status, timestamp')
+        .in('production_log_id', logIds)
+        .order('timestamp', { ascending: true });
       if (deliveries) {
-        deliveries.forEach(d => { deliveriesByLogId[d.production_log_id] = d; });
+        deliveries.forEach(d => {
+          if (!deliveriesByLogId[d.production_log_id]) deliveriesByLogId[d.production_log_id] = [];
+          deliveriesByLogId[d.production_log_id].push(d);
+        });
       }
     }
     window.deliveriesByLogId = deliveriesByLogId;
@@ -261,10 +265,14 @@
       if (logIds.length > 0) {
         const { data: deliveries } = await supabaseClient
           .from('delivery_logs')
-          .select('production_log_id, qty_received, retur, submitted_by_nama, receiver_status')
-          .in('production_log_id', logIds);
+          .select('production_log_id, qty_received, retur, submitted_by_nama, receiver_status, timestamp')
+          .in('production_log_id', logIds)
+          .order('timestamp', { ascending: true });
         if (deliveries) {
-          deliveries.forEach(d => { deliveriesByLogId[d.production_log_id] = d; });
+          deliveries.forEach(d => {
+            if (!deliveriesByLogId[d.production_log_id]) deliveriesByLogId[d.production_log_id] = [];
+            deliveriesByLogId[d.production_log_id].push(d);
+          });
         }
       }
       window.deliveriesByLogId = deliveriesByLogId;
@@ -484,14 +492,23 @@
       if (log && log.input_by_nama) {
         metaHtml += `<span class="px-2 py-0.5 bg-white text-[9px] font-bold text-slate-500 rounded border border-slate-200 uppercase tracking-tighter">${log.input_by_nama}</span>`;
       }
-      const delivery = log ? (window.deliveriesByLogId || {})[log.id] : null;
-      if (delivery) {
-        metaHtml += `<span class="px-2 py-0.5 bg-emerald-50 text-[9px] font-bold text-emerald-600 rounded border border-emerald-100 uppercase tracking-tighter">${delivery.qty_received} Porsi</span>`;
-        if (delivery.submitted_by_nama) {
-          metaHtml += `<span class="px-2 py-0.5 bg-sky-50 text-[9px] font-bold text-sky-600 rounded border border-sky-100 uppercase tracking-tighter">${delivery.submitted_by_nama}</span>`;
+      const deliveries = log ? ((window.deliveriesByLogId || {})[log.id] || []) : [];
+      if (deliveries.length > 0) {
+        const totalDiterima = deliveries.reduce((sum, d) => sum + d.qty_received, 0);
+        const totalRetur = deliveries.reduce((sum, d) => sum + (d.retur || 0), 0);
+        metaHtml += `<span class="px-2 py-0.5 bg-emerald-50 text-[9px] font-bold text-emerald-600 rounded border border-emerald-100 uppercase tracking-tighter">${totalDiterima} Porsi</span>`;
+        const namaKurir = [...new Set(deliveries.map(d => d.submitted_by_nama).filter(Boolean))];
+        namaKurir.forEach(n => {
+          metaHtml += `<span class="px-2 py-0.5 bg-sky-50 text-[9px] font-bold text-sky-600 rounded border border-sky-100 uppercase tracking-tighter">${n}</span>`;
+        });
+        if (totalRetur > 0) {
+          metaHtml += `<span class="px-2 py-0.5 bg-amber-50 text-[9px] font-bold text-amber-700 rounded border border-amber-100 uppercase tracking-tighter">Retur: ${totalRetur}</span>`;
         }
-        if (delivery.retur > 0) {
-          metaHtml += `<span class="px-2 py-0.5 bg-amber-50 text-[9px] font-bold text-amber-700 rounded border border-amber-100 uppercase tracking-tighter">Retur: ${delivery.retur}</span>`;
+        if (log) {
+          const sisa = log.qty_produced - totalDiterima;
+          if (sisa > 0) {
+            metaHtml += `<span class="px-2 py-0.5 bg-orange-100 text-[9px] font-bold text-orange-700 rounded border border-orange-200 uppercase tracking-tighter">Sisa: ${sisa} Porsi</span>`;
+          }
         }
       }
       if (!metaHtml) metaHtml = '<span class="text-[9px] text-slate-400 italic uppercase font-bold tracking-tighter">Status: Belum Input</span>';
