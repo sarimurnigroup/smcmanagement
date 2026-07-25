@@ -505,7 +505,7 @@
         if (totalRetur > 0) {
           metaHtml += `<span class="px-2 py-0.5 bg-amber-50 text-[9px] font-bold text-amber-700 rounded border border-amber-100 uppercase tracking-tighter">Retur: ${totalRetur}</span>`;
         }
-        if (log) {
+        if (log && log.status !== 'approved') {
           const sisa = log.qty_produced - totalDiterima;
           if (sisa > 0) {
             metaHtml += `<span class="px-2 py-0.5 bg-orange-100 text-[9px] font-bold text-orange-700 rounded border border-orange-200 uppercase tracking-tighter">Sisa: ${sisa} Porsi</span>`;
