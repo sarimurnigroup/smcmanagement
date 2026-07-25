@@ -351,6 +351,10 @@
 
 <!-- Catatan Popover - posisi diatur JS, nempel ke icon yang diklik -->
 <div class="hidden fixed z-[110] bg-surface rounded-xl shadow-2xl border border-outline-variant p-3 w-64" id="catatan-popover">
+<label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Tag Personil (opsional)</label>
+<select id="catatan-tag-select" class="w-full text-xs border border-outline-variant rounded-lg p-2 bg-background mb-2 focus:ring-1 focus:ring-sm-gold">
+<option value="">— Tidak ditag —</option>
+</select>
 <label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Catatan Admin</label>
 <textarea id="catatan-textarea" rows="3" class="w-full text-xs border border-outline-variant rounded-lg p-2 bg-background focus:ring-1 focus:ring-sm-gold resize-none" placeholder="Contoh: foto tidak sesuai, lokasi meleset..."></textarea>
 <div class="flex justify-end gap-2 mt-2">
@@ -366,6 +370,7 @@
         // Variables for system state
         let currentProfile = null;
         let currentRows = [];
+        let taggableUsers = [];
         const namaMeal = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
         const mealBadgeColor = {
             pagi: 'bg-amber-100 text-amber-700',
@@ -432,7 +437,7 @@
             tableBody.innerHTML = '<tr><td colspan="13" class="p-12 text-center text-outline-variant"><div class="flex flex-col items-center gap-4"><div class="w-12 h-12 border-4 border-sm-blue border-t-transparent rounded-full animate-spin"></div><span class="font-headline-md text-primary">Memuat data operasional...</span></div></td></tr>';
 
             const { data: lp, error: lpErr } = await supabaseClient.from('location_products').select('location_id, product_type, meal_time, locations(nama)').order('location_id');
-            const { data: pl, error: plErr } = await supabaseClient.from('production_logs').select('id, location_id, product_type, meal_time, qty_produced, status, catatan_admin, users!input_by(nama), approved_user:users!approved_by(nama)').eq('tanggal', tanggal);
+            const { data: pl, error: plErr } = await supabaseClient.from('production_logs').select('id, location_id, product_type, meal_time, qty_produced, status, catatan_admin, catatan_tag_user_id, tagged_user:users!catatan_tag_user_id(nama), users!input_by(nama), approved_user:users!approved_by(nama)').eq('tanggal', tanggal);
 
             if (lpErr || plErr) {
                 tableBody.innerHTML = '<tr><td colspan="13" class="p-10 text-center text-error">Gagal memuat data dari database. Silahkan refresh.</td></tr>';
@@ -459,6 +464,8 @@
                     qty_produced: prod ? prod.qty_produced : null,
                     status: prod ? prod.status : null,
                     catatan_admin: prod ? prod.catatan_admin : null,
+                    catatan_tag_user_id: prod ? prod.catatan_tag_user_id : null,
+                    catatan_tag_nama: prod?.tagged_user?.nama,
                     input_by_nama: prod?.users?.nama,
                     approved_by_nama: prod?.approved_user?.nama,
                     delivered_by_nama: namaKurirList.length > 0 ? namaKurirList.join(', ') : null,
@@ -511,8 +518,11 @@
                        </div>`
                     : '<span class="text-outline-variant">—</span>';
 
+                const catatanTooltip = row.catatan_admin
+                    ? (row.catatan_tag_nama ? `Catatan buat ${row.catatan_tag_nama}` : 'Ada catatan')
+                    : 'Tambah catatan';
                 const catatanIcon = row.log_id
-                    ? `<button onclick="openCatatan('${row.log_id}', this)" class="p-2 rounded-full border transition-all ${row.catatan_admin ? 'bg-orange-100 border-orange-300 text-orange-600' : 'bg-surface-container border-outline-variant text-outline hover:bg-orange-50 hover:text-orange-500'}" title="${row.catatan_admin ? 'Ada catatan' : 'Tambah catatan'}"><span class="material-symbols-outlined text-sm">${row.catatan_admin ? 'sticky_note_2' : 'note_add'}</span></button>`
+                    ? `<button onclick="openCatatan('${row.log_id}', this)" class="p-2 rounded-full border transition-all ${row.catatan_admin ? 'bg-orange-100 border-orange-300 text-orange-600' : 'bg-surface-container border-outline-variant text-outline hover:bg-orange-50 hover:text-orange-500'}" title="${catatanTooltip}"><span class="material-symbols-outlined text-sm">${row.catatan_admin ? 'sticky_note_2' : 'note_add'}</span></button>`
                     : '';
 
                 const mediaActions = (row.photo_url || catatanIcon)
@@ -600,6 +610,7 @@
         function openCatatan(logId, btnEl) {
             const popover = document.getElementById('catatan-popover');
             const textarea = document.getElementById('catatan-textarea');
+            const tagSelect = document.getElementById('catatan-tag-select');
             const saveBtn = document.getElementById('btn-save-catatan');
 
             // Kalau popover yang sama masih kebuka, klik lagi = tutup (toggle)
@@ -612,8 +623,13 @@
             const row = currentRows.find(r => r.log_id === logId);
             textarea.value = (row && row.catatan_admin) ? row.catatan_admin : '';
 
+            tagSelect.innerHTML = '<option value="">— Tidak ditag —</option>' +
+                taggableUsers.map(u => `<option value="${u.id}">${u.nama}</option>`).join('');
+            tagSelect.value = (row && row.catatan_tag_user_id) ? row.catatan_tag_user_id : '';
+
             const isDireksi = currentProfile.role === 'direksi';
             textarea.readOnly = isDireksi;
+            tagSelect.disabled = isDireksi;
             saveBtn.classList.toggle('hidden', isDireksi);
 
             popover.classList.remove('hidden');
@@ -646,6 +662,7 @@
         async function saveCatatan() {
             if (!activeCatatanLogId) return;
             const text = document.getElementById('catatan-textarea').value.trim();
+            const tagUserId = document.getElementById('catatan-tag-select').value;
             const saveBtn = document.getElementById('btn-save-catatan');
             const originalText = saveBtn.textContent;
             saveBtn.textContent = '...';
@@ -653,7 +670,7 @@
 
             const { error } = await supabaseClient
                 .from('production_logs')
-                .update({ catatan_admin: text || null })
+                .update({ catatan_admin: text || null, catatan_tag_user_id: tagUserId || null })
                 .eq('id', activeCatatanLogId);
 
             saveBtn.textContent = originalText;
@@ -665,7 +682,12 @@
             }
 
             const row = currentRows.find(r => r.log_id === activeCatatanLogId);
-            if (row) row.catatan_admin = text || null;
+            if (row) {
+                row.catatan_admin = text || null;
+                row.catatan_tag_user_id = tagUserId || null;
+                const taggedUser = taggableUsers.find(u => u.id === tagUserId);
+                row.catatan_tag_nama = taggedUser ? taggedUser.nama : null;
+            }
             closeCatatanPopover();
             renderTable();
         }
@@ -735,6 +757,15 @@
                 if (currentProfile.role === 'direksi') {
                     document.getElementById('btn-approve').classList.add('hidden');
                 }
+
+                const { data: tu } = await supabaseClient
+                    .from('users')
+                    .select('id, nama, role')
+                    .in('role', ['produksi', 'delivery', 'produksi_delivery'])
+                    .eq('is_active', true)
+                    .order('nama');
+                taggableUsers = tu || [];
+
                 loadData();
             }
         })();
@@ -759,7 +790,7 @@
 
             const { data: pl, error: plErr } = await supabaseClient
                 .from('production_logs')
-                .select('id, location_id, product_type, meal_time, qty_produced, status, catatan_admin')
+                .select('id, location_id, product_type, meal_time, qty_produced, status, catatan_admin, tagged_user:users!catatan_tag_user_id(nama)')
                 .eq('tanggal', tanggal);
 
             if (lpErr || plErr) {
@@ -787,6 +818,7 @@
                     qty_produced: prod ? prod.qty_produced : null,
                     status: prod ? prod.status : null,
                     catatan_admin: prod ? prod.catatan_admin : null,
+                    catatan_tag_nama: prod?.tagged_user?.nama,
                     qty_received: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + d.qty_received, 0) : null,
                     retur: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + (d.retur || 0), 0) : null
                 };
@@ -809,8 +841,39 @@
             text += `Total jadwal: ${totalItem}\n`;
             text += `Sudah produksi: ${sudahProduksi}/${totalItem}\n`;
             text += `Sudah dikirim: ${sudahKirim}/${totalItem}\n`;
-            text += `Sudah disetujui: ${sudahApprove}/${totalItem}\n\n`;
-            text += `*Detail per Lokasi:*\n`;
+            text += `Sudah disetujui: ${sudahApprove}/${totalItem}\n`;
+
+            const adaCatatan = rows.filter(r => r.catatan_admin);
+            if (adaCatatan.length > 0) {
+                text += `\n*⚠️ Catatan Admin (${adaCatatan.length}):*\n`;
+
+                const byPersonil = {};
+                const tanpaTag = [];
+                adaCatatan.forEach(r => {
+                    if (r.catatan_tag_nama) {
+                        if (!byPersonil[r.catatan_tag_nama]) byPersonil[r.catatan_tag_nama] = [];
+                        byPersonil[r.catatan_tag_nama].push(r);
+                    } else {
+                        tanpaTag.push(r);
+                    }
+                });
+
+                Object.keys(byPersonil).sort().forEach(nama => {
+                    text += `\n👤 *${nama}*\n`;
+                    byPersonil[nama].forEach(r => {
+                        text += `- ${r.location_nama} (${namaProduk[r.product_type]} ${namaMeal[r.meal_time]}): ${r.catatan_admin}\n`;
+                    });
+                });
+
+                if (tanpaTag.length > 0) {
+                    text += `\n👤 *Umum (tanpa tag)*\n`;
+                    tanpaTag.forEach(r => {
+                        text += `- ${r.location_nama} (${namaProduk[r.product_type]} ${namaMeal[r.meal_time]}): ${r.catatan_admin}\n`;
+                    });
+                }
+            }
+
+            text += `\n*Detail per Lokasi:*\n`;
 
             Object.keys(byLokasi).sort().forEach(loc => {
                 text += `\n📍 *${loc}*\n`;
@@ -826,9 +889,6 @@
                         if (r.qty_received !== null) statusText = r.status === 'approved' ? 'selesai & disetujui' : 'sudah terkirim';
                         const returText = r.retur > 0 ? `, retur ${r.retur}` : '';
                         text += `- ${label}: ${r.qty_produced} porsi (${statusText}${returText})\n`;
-                        if (r.catatan_admin) {
-                            text += `  ⚠️ Catatan: ${r.catatan_admin}\n`;
-                        }
                     });
             });
 
@@ -837,14 +897,6 @@
                 text += `\n*Catatan — belum ada input produksi:*\n`;
                 belumInput.forEach(r => {
                     text += `- ${r.location_nama} (${namaProduk[r.product_type]} ${namaMeal[r.meal_time]})\n`;
-                });
-            }
-
-            const adaCatatan = rows.filter(r => r.catatan_admin);
-            if (adaCatatan.length > 0) {
-                text += `\n*⚠️ Rangkuman Catatan Admin (${adaCatatan.length}):*\n`;
-                adaCatatan.forEach(r => {
-                    text += `- ${r.location_nama} (${namaProduk[r.product_type]} ${namaMeal[r.meal_time]}): ${r.catatan_admin}\n`;
                 });
             }
 
