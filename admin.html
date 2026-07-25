@@ -496,7 +496,7 @@
                 const qtyDisplay = row.log_id 
                     ? `<div class="flex items-center gap-2" id="qtycell-${row.log_id}">
                          <span class="font-bold text-primary">${row.qty_produced}</span>
-                         <button onclick="enableEditQty('${row.log_id}', ${row.qty_produced})" class="opacity-0 group-hover:opacity-100 material-symbols-outlined text-xs p-1 rounded hover:bg-surface-container-high transition-all">edit</button>
+                         ${currentProfile.role !== 'direksi' ? `<button onclick="enableEditQty('${row.log_id}', ${row.qty_produced})" class="opacity-0 group-hover:opacity-100 material-symbols-outlined text-xs p-1 rounded hover:bg-surface-container-high transition-all">edit</button>` : ''}
                        </div>`
                     : '<span class="text-outline-variant">—</span>';
 
@@ -507,7 +507,9 @@
                        </div>`
                     : '<span class="text-outline-variant">—</span>';
 
-                const rowAction = (siklus.key === 'terkirim')
+                const rowAction = (currentProfile.role === 'direksi')
+                    ? `<span class="text-outline-variant text-[10px] uppercase font-bold tracking-tighter">Lihat Saja</span>`
+                    : (siklus.key === 'terkirim')
                     ? `<div class="flex items-center gap-3">
                         <input type="checkbox" class="approve-checkbox w-4 h-4 rounded border-outline-variant text-sm-gold focus:ring-sm-gold" data-log-id="${row.log_id}" onchange="updateApproveButton()">
                         <button onclick="approveSingle('${row.log_id}')" class="bg-sm-gold text-on-secondary px-3 py-1 rounded text-xs font-bold hover:brightness-110 transition-all">Approve</button>
@@ -613,7 +615,7 @@
 
         // Init process
         (async () => {
-            currentProfile = await requireAuth(['admin', 'superuser']);
+            currentProfile = await requireAuth(['admin', 'superuser', 'direksi']);
             if (currentProfile) {
                 renderUserHeader(currentProfile);
 
@@ -629,6 +631,9 @@
 
                 if (currentProfile.role === 'superuser') {
                     document.getElementById('tab-btn-akun').classList.remove('hidden');
+                }
+                if (currentProfile.role === 'direksi') {
+                    document.getElementById('btn-approve').classList.add('hidden');
                 }
                 loadData();
             }

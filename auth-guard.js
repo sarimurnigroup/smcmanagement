@@ -71,7 +71,8 @@ function redirectByRole(role) {
     produksi: 'produksi.html',
     delivery: 'delivery.html',
     admin: 'admin.html',
-    superuser: 'admin.html'
+    superuser: 'admin.html',
+    direksi: 'admin.html'
   };
   window.location.href = tujuan[role] || 'index.html';
 }
