@@ -892,14 +892,6 @@
                     });
             });
 
-            const belumInput = rows.filter(r => r.qty_produced === null);
-            if (belumInput.length > 0) {
-                text += `\n*Catatan — belum ada input produksi:*\n`;
-                belumInput.forEach(r => {
-                    text += `- ${r.location_nama} (${namaProduk[r.product_type]} ${namaMeal[r.meal_time]})\n`;
-                });
-            }
-
             output.value = text;
             statusLine.innerText = "Laporan berhasil disusun.";
         }
