@@ -124,10 +124,10 @@
   let selectedJadwal = null;
 
   const namaMeal = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
-  const namaProduk = { tahanan: 'Makan Tahanan', anggota: 'Makan Anggota' };
-  const iconProduk = { tahanan: 'flatware', anggota: 'groups' };
+  const namaProduk = { tahanan: 'Makan Tahanan', anggota: 'Makan Anggota', tahanan_propam: 'Tahanan Propam' };
+  const iconProduk = { tahanan: 'flatware', anggota: 'groups', tahanan_propam: 'shield' };
   const urutanJadwal = ['pagi', 'siang', 'malam'];
-  const urutanProduk = ['tahanan', 'anggota'];
+  const urutanProduk = ['tahanan', 'tahanan_propam', 'anggota'];
 
   function todayStr() {
     const d = new Date();
@@ -333,7 +333,8 @@
 
     const produkColor = {
       tahanan: { border: 'border-l-rose-400', iconBg: 'bg-rose-50', iconText: 'text-rose-600' },
-      anggota: { border: 'border-l-violet-400', iconBg: 'bg-violet-50', iconText: 'text-violet-600' }
+      anggota: { border: 'border-l-violet-400', iconBg: 'bg-violet-50', iconText: 'text-violet-600' },
+      tahanan_propam: { border: 'border-l-lime-500', iconBg: 'bg-lime-50', iconText: 'text-lime-700' }
     };
 
     urutanProduk.forEach(pt => {
