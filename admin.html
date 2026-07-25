@@ -776,6 +776,20 @@
             return `${d} ${bulanIndo[m - 1]} ${y}`;
         }
 
+        function formatHariTanggalIndo(dateStr) {
+            const hariIndo = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            return `${hariIndo[dateObj.getDay()]}, ${formatTanggalIndo(dateStr)}`;
+        }
+
+        function formatWaktuSekarangLengkap() {
+            const now = new Date();
+            const jam = String(now.getHours()).padStart(2, '0');
+            const menit = String(now.getMinutes()).padStart(2, '0');
+            return `${formatTanggalIndo(todayStr())}, ${jam}.${menit} WIB`;
+        }
+
         async function generateLaporanHarian() {
             const tanggal = document.getElementById('date-picker-laporan').value;
             const output = document.getElementById('laporan-output');
@@ -785,12 +799,12 @@
 
             const { data: lp, error: lpErr } = await supabaseClient
                 .from('location_products')
-                .select('location_id, product_type, meal_time, locations(nama)')
+                .select('location_id, product_type, meal_time, default_qty, locations(nama, routes(nama, is_mitra))')
                 .order('location_id');
 
             const { data: pl, error: plErr } = await supabaseClient
                 .from('production_logs')
-                .select('id, location_id, product_type, meal_time, qty_produced, status, catatan_admin, tagged_user:users!catatan_tag_user_id(nama)')
+                .select('id, location_id, product_type, meal_time, qty_produced, status, catatan_admin, tagged_user:users!catatan_tag_user_id(nama), users!input_by(nama), approved_user:users!approved_by(nama)')
                 .eq('tanggal', tanggal);
 
             if (lpErr || plErr) {
@@ -803,7 +817,7 @@
             if (logIds.length > 0) {
                 const { data: dls } = await supabaseClient
                     .from('delivery_logs')
-                    .select('production_log_id, qty_received, retur')
+                    .select('production_log_id, qty_received, retur, submitted_user:users!submitted_by(nama)')
                     .in('production_log_id', logIds);
                 dl = dls || [];
             }
@@ -811,42 +825,51 @@
             const rows = lp.map(item => {
                 const prod = pl.find(p => p.location_id === item.location_id && p.product_type === item.product_type && p.meal_time === item.meal_time);
                 const deliveries = prod ? dl.filter(d => d.production_log_id === prod.id) : [];
+                const route = item.locations.routes;
                 return {
                     location_nama: item.locations.nama,
+                    route_nama: route ? route.nama : '—',
+                    is_mitra: route ? route.is_mitra : false,
                     product_type: item.product_type,
                     meal_time: item.meal_time,
+                    default_qty: item.default_qty,
                     qty_produced: prod ? prod.qty_produced : null,
                     status: prod ? prod.status : null,
                     catatan_admin: prod ? prod.catatan_admin : null,
                     catatan_tag_nama: prod?.tagged_user?.nama,
+                    input_by_nama: prod?.users?.nama,
+                    approved_by_nama: prod?.approved_user?.nama,
                     qty_received: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + d.qty_received, 0) : null,
-                    retur: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + (d.retur || 0), 0) : null
+                    retur: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + (d.retur || 0), 0) : null,
+                    delivered_by_list: [...new Set(deliveries.map(d => d.submitted_user?.nama).filter(Boolean))]
                 };
             });
+
+            const isSelesai = r => r.qty_produced !== null && r.qty_received !== null && r.qty_received >= r.qty_produced;
+            const hitungSelesai = list => list.filter(isSelesai).length;
+            const hitungRetur = list => list.reduce((sum, r) => sum + (r.retur || 0), 0);
+            const labelProdukJadwal = r => `${namaProduk[r.product_type]} ${namaMeal[r.meal_time]}`;
 
             const totalItem = rows.length;
             const sudahProduksi = rows.filter(r => r.qty_produced !== null).length;
             const sudahKirim = rows.filter(r => r.qty_received !== null).length;
             const sudahApprove = rows.filter(r => r.status === 'approved').length;
 
-            const byLokasi = {};
-            rows.forEach(r => {
-                if (!byLokasi[r.location_nama]) byLokasi[r.location_nama] = [];
-                byLokasi[r.location_nama].push(r);
-            });
+            // ===== 1. Header =====
+            let text = `📋 *LAPORAN HARIAN — SM CATERING*\n`;
+            text += `*${formatHariTanggalIndo(tanggal)}*\n\n`;
 
-            let text = `*📋 LAPORAN HARIAN PRODUKSI & DISTRIBUSI — SM CATERING*\n`;
-            text += `Tanggal: ${formatTanggalIndo(tanggal)}\n\n`;
+            // ===== 2. Ringkasan =====
             text += `*Ringkasan:*\n`;
             text += `Total jadwal: ${totalItem}\n`;
             text += `Sudah produksi: ${sudahProduksi}/${totalItem}\n`;
             text += `Sudah dikirim: ${sudahKirim}/${totalItem}\n`;
             text += `Sudah disetujui: ${sudahApprove}/${totalItem}\n`;
 
+            // ===== 3. Catatan Admin (kondisional) =====
             const adaCatatan = rows.filter(r => r.catatan_admin);
             if (adaCatatan.length > 0) {
                 text += `\n*⚠️ Catatan Admin (${adaCatatan.length}):*\n`;
-
                 const byPersonil = {};
                 const tanpaTag = [];
                 adaCatatan.forEach(r => {
@@ -857,40 +880,119 @@
                         tanpaTag.push(r);
                     }
                 });
-
                 Object.keys(byPersonil).sort().forEach(nama => {
                     text += `\n👤 *${nama}*\n`;
                     byPersonil[nama].forEach(r => {
-                        text += `- ${r.location_nama} (${namaProduk[r.product_type]} ${namaMeal[r.meal_time]}): ${r.catatan_admin}\n`;
+                        text += `- *${r.location_nama}* (*${labelProdukJadwal(r)}*): ${r.catatan_admin}\n`;
                     });
                 });
-
                 if (tanpaTag.length > 0) {
                     text += `\n👤 *Umum (tanpa tag)*\n`;
                     tanpaTag.forEach(r => {
-                        text += `- ${r.location_nama} (${namaProduk[r.product_type]} ${namaMeal[r.meal_time]}): ${r.catatan_admin}\n`;
+                        text += `- *${r.location_nama}* (*${labelProdukJadwal(r)}*): ${r.catatan_admin}\n`;
                     });
                 }
             }
 
+            // ===== 4. Anomali Qty Anggota (kondisional) =====
+            const anomaliAnggota = rows.filter(r =>
+                r.product_type === 'anggota' && r.qty_produced !== null && r.default_qty !== null && r.qty_produced !== r.default_qty
+            );
+            if (anomaliAnggota.length > 0) {
+                text += `\n*🔍 Anomali Qty Anggota:*\n`;
+                anomaliAnggota.forEach(r => {
+                    text += `- *${r.location_nama}*: input ${r.qty_produced} porsi (biasanya ${r.default_qty})\n`;
+                });
+            }
+
+            // ===== 5. Performa Pengiriman =====
+            const internal = rows.filter(r => !r.is_mitra);
+            const mitraRows = rows.filter(r => r.is_mitra);
+
+            text += `\n*🚚 Performa Pengiriman:*\n`;
+            text += `\nInternal (Rute 1-4): ${hitungSelesai(internal)}/${internal.length} selesai · retur ${hitungRetur(internal)} porsi\n`;
+            const internalBelum = internal.filter(r => !isSelesai(r));
+            if (internalBelum.length > 0) {
+                const byRute = {};
+                internalBelum.forEach(r => {
+                    if (!byRute[r.route_nama]) byRute[r.route_nama] = [];
+                    byRute[r.route_nama].push(r);
+                });
+                Object.keys(byRute).sort().forEach(rute => {
+                    const items = byRute[rute].map(r => `${r.location_nama} - ${labelProdukJadwal(r)}`).join(', ');
+                    text += `- Belum selesai: *${rute}* (${items})\n`;
+                });
+            }
+
+            text += `\nMitra SM:\n`;
+            const mitraByNama = {};
+            mitraRows.forEach(r => {
+                if (!mitraByNama[r.route_nama]) mitraByNama[r.route_nama] = [];
+                mitraByNama[r.route_nama].push(r);
+            });
+            Object.keys(mitraByNama).sort().forEach(namaMitra => {
+                const list = mitraByNama[namaMitra];
+                const jmlLokasi = new Set(list.map(r => r.location_nama)).size;
+                text += `- *${namaMitra}* (${jmlLokasi} lokasi): ${hitungSelesai(list)}/${list.length} selesai · retur ${hitungRetur(list)} porsi\n`;
+                const belum = list.filter(r => !isSelesai(r));
+                if (belum.length === list.length) {
+                    text += `  Belum selesai: semua lokasi\n`;
+                } else if (belum.length > 0) {
+                    const belumLoc = [...new Set(belum.map(r => r.location_nama))];
+                    text += `  Belum selesai: ${belumLoc.join(', ')}\n`;
+                }
+            });
+
+            // ===== 6. Detail per Lokasi (terpisah Internal/Mitra) =====
             text += `\n*Detail per Lokasi:*\n`;
 
-            Object.keys(byLokasi).sort().forEach(loc => {
-                text += `\n📍 *${loc}*\n`;
-                byLokasi[loc]
-                    .sort((a, b) => mealOrder[a.meal_time] - mealOrder[b.meal_time])
-                    .forEach(r => {
-                        const label = `${namaProduk[r.product_type]} ${namaMeal[r.meal_time]}`;
-                        if (r.qty_produced === null) {
-                            text += `- ${label}: belum ada input produksi\n`;
-                            return;
-                        }
-                        let statusText = 'siap kirim';
-                        if (r.qty_received !== null) statusText = r.status === 'approved' ? 'selesai & disetujui' : 'sudah terkirim';
-                        const returText = r.retur > 0 ? `, retur ${r.retur}` : '';
-                        text += `- ${label}: ${r.qty_produced} porsi (${statusText}${returText})\n`;
-                    });
-            });
+            function tulisGrupLokasi(list, judul) {
+                if (list.length === 0) return;
+                text += `\n── ${judul} ──\n`;
+                const byLok = {};
+                list.forEach(r => {
+                    if (!byLok[r.location_nama]) byLok[r.location_nama] = { items: [], mitraNama: r.is_mitra ? r.route_nama : null };
+                    byLok[r.location_nama].items.push(r);
+                });
+                Object.keys(byLok).sort().forEach(loc => {
+                    const grup = byLok[loc];
+                    const embel = grup.mitraNama ? ` _(${grup.mitraNama})_` : '';
+                    text += `\n📍 *${loc}*${embel}\n`;
+                    grup.items
+                        .sort((a, b) => mealOrder[a.meal_time] - mealOrder[b.meal_time])
+                        .forEach(r => {
+                            const label = labelProdukJadwal(r);
+                            if (r.qty_produced === null) {
+                                text += `- *${label}*: belum ada input produksi\n`;
+                                return;
+                            }
+                            let statusText = 'siap kirim';
+                            if (r.qty_received !== null) statusText = r.status === 'approved' ? 'selesai & disetujui' : 'sudah terkirim';
+                            const returText = r.retur > 0 ? `, retur ${r.retur}` : '';
+                            text += `- *${label}*: ${r.qty_produced} porsi (${statusText}${returText})\n`;
+                        });
+                });
+            }
+
+            tulisGrupLokasi(internal, 'INTERNAL (RUTE 1-4)');
+            tulisGrupLokasi(mitraRows, 'MITRA');
+
+            // ===== 7. Personil Hari Ini =====
+            const produksiHariIni = [...new Set(rows.filter(r => r.input_by_nama).map(r => r.input_by_nama))].sort();
+            const deliveryHariIni = [...new Set(rows.flatMap(r => r.delivered_by_list))].sort();
+            const adminHariIni = [...new Set(rows.filter(r => r.approved_by_nama).map(r => r.approved_by_nama))].sort();
+
+            text += `\n*👥 Personil Hari Ini:*\n`;
+            text += `- Produksi: ${produksiHariIni.length > 0 ? produksiHariIni.map(n => `*${n}*`).join(', ') : '—'}\n`;
+            text += `- Delivery: ${deliveryHariIni.length > 0 ? deliveryHariIni.map(n => `*${n}*`).join(', ') : '—'}\n`;
+            text += `- Admin: ${adminHariIni.length > 0 ? adminHariIni.map(n => `*${n}*`).join(', ') : '—'}\n`;
+
+            // ===== 8. Closing & Sign-off =====
+            text += `\nTerima kasih atas kerja keras seluruh tim Produksi, Delivery, dan Mitra hari ini. Setiap porsi yang sampai dengan baik adalah hasil dari dedikasi kalian menjalankan tugas, sekecil apapun kelihatannya.\n`;
+            text += `\nSalam hangat dari Dewan Direksi SM Group.\n`;
+            text += `\n➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖\n`;
+            text += `Daily Report generated by *${currentProfile.nama}*\n`;
+            text += `_${formatWaktuSekarangLengkap()}_`;
 
             output.value = text;
             statusLine.innerText = "Laporan berhasil disusun.";
