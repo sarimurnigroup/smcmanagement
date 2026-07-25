@@ -348,6 +348,16 @@
 <button class="w-full bg-primary-container text-on-primary py-4 rounded-xl font-bold text-lg shadow-lg hover:opacity-90 transition-all" onclick="closePopup()">Selesai</button>
 </div>
 </div>
+
+<!-- Catatan Popover - posisi diatur JS, nempel ke icon yang diklik -->
+<div class="hidden fixed z-[110] bg-surface rounded-xl shadow-2xl border border-outline-variant p-3 w-64" id="catatan-popover">
+<label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Catatan Admin</label>
+<textarea id="catatan-textarea" rows="3" class="w-full text-xs border border-outline-variant rounded-lg p-2 bg-background focus:ring-1 focus:ring-sm-gold resize-none" placeholder="Contoh: foto tidak sesuai, lokasi meleset..."></textarea>
+<div class="flex justify-end gap-2 mt-2">
+<button onclick="closeCatatanPopover()" class="text-[10px] font-bold text-outline uppercase px-3 py-1.5 rounded hover:bg-surface-container-high transition-all">Tutup</button>
+<button id="btn-save-catatan" onclick="saveCatatan()" class="text-[10px] font-bold text-white uppercase px-3 py-1.5 rounded bg-sm-gold hover:brightness-110 transition-all">Simpan</button>
+</div>
+</div>
 <!-- Script Sources -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="supabase-client.js"></script>
@@ -422,7 +432,7 @@
             tableBody.innerHTML = '<tr><td colspan="13" class="p-12 text-center text-outline-variant"><div class="flex flex-col items-center gap-4"><div class="w-12 h-12 border-4 border-sm-blue border-t-transparent rounded-full animate-spin"></div><span class="font-headline-md text-primary">Memuat data operasional...</span></div></td></tr>';
 
             const { data: lp, error: lpErr } = await supabaseClient.from('location_products').select('location_id, product_type, meal_time, locations(nama)').order('location_id');
-            const { data: pl, error: plErr } = await supabaseClient.from('production_logs').select('id, location_id, product_type, meal_time, qty_produced, status, users!input_by(nama), approved_user:users!approved_by(nama)').eq('tanggal', tanggal);
+            const { data: pl, error: plErr } = await supabaseClient.from('production_logs').select('id, location_id, product_type, meal_time, qty_produced, status, catatan_admin, users!input_by(nama), approved_user:users!approved_by(nama)').eq('tanggal', tanggal);
 
             if (lpErr || plErr) {
                 tableBody.innerHTML = '<tr><td colspan="13" class="p-10 text-center text-error">Gagal memuat data dari database. Silahkan refresh.</td></tr>';
@@ -448,6 +458,7 @@
                     log_id: prod ? prod.id : null,
                     qty_produced: prod ? prod.qty_produced : null,
                     status: prod ? prod.status : null,
+                    catatan_admin: prod ? prod.catatan_admin : null,
                     input_by_nama: prod?.users?.nama,
                     approved_by_nama: prod?.approved_user?.nama,
                     delivered_by_nama: namaKurirList.length > 0 ? namaKurirList.join(', ') : null,
@@ -500,10 +511,15 @@
                        </div>`
                     : '<span class="text-outline-variant">—</span>';
 
-                const mediaActions = row.photo_url 
-                    ? `<div class="flex gap-2">
-                        <a href="${row.photo_url}" target="_blank" class="p-2 rounded-full bg-surface-container border border-outline-variant hover:bg-sm-gold/10 hover:text-sm-gold transition-all" title="Lihat Foto"><span class="material-symbols-outlined text-sm">image</span></a>
-                        <a href="https://www.google.com/maps?q=${row.gps_lat},${row.gps_lng}" target="_blank" class="p-2 rounded-full bg-surface-container border border-outline-variant hover:bg-primary/10 hover:text-primary transition-all" title="Buka GPS"><span class="material-symbols-outlined text-sm">location_on</span></a>
+                const catatanIcon = row.log_id
+                    ? `<button onclick="openCatatan('${row.log_id}', this)" class="p-2 rounded-full border transition-all ${row.catatan_admin ? 'bg-orange-100 border-orange-300 text-orange-600' : 'bg-surface-container border-outline-variant text-outline hover:bg-orange-50 hover:text-orange-500'}" title="${row.catatan_admin ? 'Ada catatan' : 'Tambah catatan'}"><span class="material-symbols-outlined text-sm">${row.catatan_admin ? 'sticky_note_2' : 'note_add'}</span></button>`
+                    : '';
+
+                const mediaActions = (row.photo_url || catatanIcon)
+                    ? `<div class="flex gap-2 items-center">
+                        ${row.photo_url ? `<a href="${row.photo_url}" target="_blank" class="p-2 rounded-full bg-surface-container border border-outline-variant hover:bg-sm-gold/10 hover:text-sm-gold transition-all" title="Lihat Foto"><span class="material-symbols-outlined text-sm">image</span></a>` : ''}
+                        ${row.photo_url ? `<a href="https://www.google.com/maps?q=${row.gps_lat},${row.gps_lng}" target="_blank" class="p-2 rounded-full bg-surface-container border border-outline-variant hover:bg-primary/10 hover:text-primary transition-all" title="Buka GPS"><span class="material-symbols-outlined text-sm">location_on</span></a>` : ''}
+                        ${catatanIcon}
                        </div>`
                     : '<span class="text-outline-variant">—</span>';
 
@@ -577,11 +593,95 @@
             loadData();
         }
 
+        function closePopup() { document.getElementById('popup-overlay').classList.add('hidden'); }
+
+        let activeCatatanLogId = null;
+
+        function openCatatan(logId, btnEl) {
+            const popover = document.getElementById('catatan-popover');
+            const textarea = document.getElementById('catatan-textarea');
+            const saveBtn = document.getElementById('btn-save-catatan');
+
+            // Kalau popover yang sama masih kebuka, klik lagi = tutup (toggle)
+            if (!popover.classList.contains('hidden') && activeCatatanLogId === logId) {
+                closeCatatanPopover();
+                return;
+            }
+
+            activeCatatanLogId = logId;
+            const row = currentRows.find(r => r.log_id === logId);
+            textarea.value = (row && row.catatan_admin) ? row.catatan_admin : '';
+
+            const isDireksi = currentProfile.role === 'direksi';
+            textarea.readOnly = isDireksi;
+            saveBtn.classList.toggle('hidden', isDireksi);
+
+            popover.classList.remove('hidden');
+
+            // Posisiin nempel di bawah tombol yang diklik, geser ke kiri kalau kepotong layar
+            const rect = btnEl.getBoundingClientRect();
+            const popW = 256; // w-64
+            let left = rect.left;
+            if (left + popW > window.innerWidth - 16) left = window.innerWidth - popW - 16;
+            let top = rect.bottom + 8;
+            popover.style.left = left + 'px';
+            popover.style.top = top + 'px';
+
+            // Kalau ketutup tepi bawah layar, tampilin di ATAS tombol sebagai gantinya
+            requestAnimationFrame(() => {
+                const popRect = popover.getBoundingClientRect();
+                if (popRect.bottom > window.innerHeight - 16) {
+                    popover.style.top = (rect.top - popRect.height - 8) + 'px';
+                }
+            });
+
+            if (!isDireksi) textarea.focus();
+        }
+
+        function closeCatatanPopover() {
+            document.getElementById('catatan-popover').classList.add('hidden');
+            activeCatatanLogId = null;
+        }
+
+        async function saveCatatan() {
+            if (!activeCatatanLogId) return;
+            const text = document.getElementById('catatan-textarea').value.trim();
+            const saveBtn = document.getElementById('btn-save-catatan');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = '...';
+            saveBtn.disabled = true;
+
+            const { error } = await supabaseClient
+                .from('production_logs')
+                .update({ catatan_admin: text || null })
+                .eq('id', activeCatatanLogId);
+
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+
+            if (error) {
+                alert('Gagal menyimpan catatan: ' + error.message);
+                return;
+            }
+
+            const row = currentRows.find(r => r.log_id === activeCatatanLogId);
+            if (row) row.catatan_admin = text || null;
+            closeCatatanPopover();
+            renderTable();
+        }
+
+        document.addEventListener('click', function (e) {
+            const popover = document.getElementById('catatan-popover');
+            if (popover.classList.contains('hidden')) return;
+            if (popover.contains(e.target)) return;
+            if (e.target.closest('[onclick^="openCatatan"]')) return;
+            closeCatatanPopover();
+        });
+
         function showPopup(msg) {
             document.getElementById('popup-message').innerText = msg;
             document.getElementById('popup-overlay').classList.remove('hidden');
         }
-        function closePopup() { document.getElementById('popup-overlay').classList.add('hidden'); }
 
         async function loadUsers() {
             const tbody = document.getElementById('users-table-body');
@@ -659,7 +759,7 @@
 
             const { data: pl, error: plErr } = await supabaseClient
                 .from('production_logs')
-                .select('id, location_id, product_type, meal_time, qty_produced, status')
+                .select('id, location_id, product_type, meal_time, qty_produced, status, catatan_admin')
                 .eq('tanggal', tanggal);
 
             if (lpErr || plErr) {
@@ -686,6 +786,7 @@
                     meal_time: item.meal_time,
                     qty_produced: prod ? prod.qty_produced : null,
                     status: prod ? prod.status : null,
+                    catatan_admin: prod ? prod.catatan_admin : null,
                     qty_received: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + d.qty_received, 0) : null,
                     retur: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + (d.retur || 0), 0) : null
                 };
@@ -725,6 +826,9 @@
                         if (r.qty_received !== null) statusText = r.status === 'approved' ? 'selesai & disetujui' : 'sudah terkirim';
                         const returText = r.retur > 0 ? `, retur ${r.retur}` : '';
                         text += `- ${label}: ${r.qty_produced} porsi (${statusText}${returText})\n`;
+                        if (r.catatan_admin) {
+                            text += `  ⚠️ Catatan: ${r.catatan_admin}\n`;
+                        }
                     });
             });
 
@@ -733,6 +837,14 @@
                 text += `\n*Catatan — belum ada input produksi:*\n`;
                 belumInput.forEach(r => {
                     text += `- ${r.location_nama} (${namaProduk[r.product_type]} ${namaMeal[r.meal_time]})\n`;
+                });
+            }
+
+            const adaCatatan = rows.filter(r => r.catatan_admin);
+            if (adaCatatan.length > 0) {
+                text += `\n*⚠️ Rangkuman Catatan Admin (${adaCatatan.length}):*\n`;
+                adaCatatan.forEach(r => {
+                    text += `- ${r.location_nama} (${namaProduk[r.product_type]} ${namaMeal[r.meal_time]}): ${r.catatan_admin}\n`;
                 });
             }
 
