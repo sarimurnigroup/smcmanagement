@@ -859,30 +859,40 @@
             let text = `📋 *LAPORAN HARIAN — SM CATERING*\n`;
             text += `*${formatHariTanggalIndo(tanggal)}*\n`;
 
-            // ===== 2. Total Pengiriman (produksi vs terkirim, per produk+jadwal) =====
-            const totalByProdukJadwal = {};
-            rows.forEach(r => {
-                const key = `${r.product_type}|${r.meal_time}`;
-                if (!totalByProdukJadwal[key]) {
-                    totalByProdukJadwal[key] = { product_type: r.product_type, meal_time: r.meal_time, produksi: 0, terkirim: 0 };
-                }
-                if (r.qty_produced !== null) totalByProdukJadwal[key].produksi += r.qty_produced;
-                if (r.qty_received !== null) totalByProdukJadwal[key].terkirim += r.qty_received;
-            });
+            // ===== 2. Total Pengiriman (produksi vs terkirim, per produk+jadwal, dipisah Internal/Mitra) =====
             const urutanProdukTampilan = ['anggota', 'tahanan', 'tahanan_propam'];
             const namaProdukTampilan = { anggota: 'Makan Anggota', tahanan: 'Makan Tahanan', tahanan_propam: 'Makan Tahanan PROPAM' };
 
-            text += `\n*Total Pengiriman:*\n`;
-            urutanProdukTampilan.forEach(pt => {
-                const entries = Object.values(totalByProdukJadwal)
-                    .filter(e => e.product_type === pt)
-                    .sort((a, b) => mealOrder[a.meal_time] - mealOrder[b.meal_time]);
-                if (entries.length === 0) return;
-                text += `\n*${namaProdukTampilan[pt]}*\n`;
-                entries.forEach(e => {
-                    text += `- ${namaMeal[e.meal_time]}: Diproduksi ${e.produksi} porsi | Terkirim ${e.terkirim} porsi\n`;
+            function tulisTotalPengiriman(list) {
+                const byProdukJadwal = {};
+                list.forEach(r => {
+                    const key = `${r.product_type}|${r.meal_time}`;
+                    if (!byProdukJadwal[key]) {
+                        byProdukJadwal[key] = { product_type: r.product_type, meal_time: r.meal_time, produksi: 0, terkirim: 0 };
+                    }
+                    if (r.qty_produced !== null) byProdukJadwal[key].produksi += r.qty_produced;
+                    if (r.qty_received !== null) byProdukJadwal[key].terkirim += r.qty_received;
                 });
-            });
+                urutanProdukTampilan.forEach(pt => {
+                    const entries = Object.values(byProdukJadwal)
+                        .filter(e => e.product_type === pt)
+                        .sort((a, b) => mealOrder[a.meal_time] - mealOrder[b.meal_time]);
+                    if (entries.length === 0) return;
+                    text += `\n*${namaProdukTampilan[pt]}*\n`;
+                    entries.forEach(e => {
+                        text += `- ${namaMeal[e.meal_time]}: Diproduksi ${e.produksi} porsi | Terkirim ${e.terkirim} porsi\n`;
+                    });
+                });
+            }
+
+            const internalAwal = rows.filter(r => !r.is_mitra);
+            const mitraAwal = rows.filter(r => r.is_mitra);
+
+            text += `\n*Total Pengiriman:*\n`;
+            text += `\n_Internal (Rute 1-4)_\n`;
+            tulisTotalPengiriman(internalAwal);
+            text += `\n_Mitra SM_\n`;
+            tulisTotalPengiriman(mitraAwal);
 
             // ===== 3. Ringkasan =====
             text += `\n*Ringkasan:*\n`;
@@ -931,8 +941,8 @@
             }
 
             // ===== 6. Performa Pengiriman (dipadetin, 1 baris per rute/mitra) =====
-            const internal = rows.filter(r => !r.is_mitra);
-            const mitraRows = rows.filter(r => r.is_mitra);
+            const internal = internalAwal;
+            const mitraRows = mitraAwal;
 
             const byRuteInternal = {};
             internal.forEach(r => {
