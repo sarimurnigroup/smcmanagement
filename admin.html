@@ -1152,7 +1152,7 @@
             }
 
             // Satu bab lengkap (semua section) buat 1 kelompok baris (internal ATAU mitra)
-            function bangunBab(list, judulBab) {
+            function bangunBab(list, judulBab, sertakanDetailLokasi = true) {
                 text += `\n═══════════════════\n${judulBab}\n═══════════════════\n`;
 
                 if (list.length === 0) {
@@ -1239,8 +1239,10 @@
                     }
                 });
 
-                text += `\n*Detail per Lokasi:*\n`;
-                Object.keys(byRute).sort().forEach(rute => tulisGrupRute(byRute[rute], rute));
+                if (sertakanDetailLokasi) {
+                    text += `\n*Detail per Lokasi:*\n`;
+                    Object.keys(byRute).sort().forEach(rute => tulisGrupRute(byRute[rute], rute));
+                }
 
                 const produksiBab = [...new Set(list.filter(r => r.input_by_nama).map(r => r.input_by_nama))].sort();
                 const deliveryBab = [...new Set(list.flatMap(r => r.delivered_by_list))].sort();
@@ -1261,7 +1263,7 @@
             const mitraAwal = rows.filter(r => r.is_mitra);
 
             bangunBab(internalAwal, '🏢 SM CATERING (INTERNAL)');
-            bangunBab(mitraAwal, '🤝 MITRA SM');
+            bangunBab(mitraAwal, '🤝 MITRA SM', false);
 
             // ===== 3. Closing & Sign-off (gabungan, buat semua tim) =====
             text += `\n═══════════════════\n`;
