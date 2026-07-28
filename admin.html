@@ -1129,6 +1129,22 @@
                     const rl = byRute[rute];
                     const jmlLokasi = new Set(rl.map(r => r.location_nama)).size;
                     text += `*${rute}* (${jmlLokasi} lokasi): ${hitungSelesai(rl)}/${rl.length} selesai · retur ${hitungRetur(rl)} porsi\n`;
+
+                    const belumKirim = rl.filter(r => r.qty_produced !== null && r.qty_received === null);
+                    const returBelumApprove = rl.filter(r => r.qty_received !== null && r.qty_received < r.qty_produced && r.status !== 'approved');
+                    const returFinal = rl.filter(r => r.qty_received !== null && r.qty_received < r.qty_produced && r.status === 'approved');
+
+                    if (belumKirim.length > 0) {
+                        text += `  Belum dikirim: ${belumKirim.length} lokasi\n`;
+                    }
+                    if (returBelumApprove.length > 0) {
+                        const porsi = returBelumApprove.reduce((sum, r) => sum + r.retur, 0);
+                        text += `  ⚠️ Retur belum di-approve: ${porsi} porsi (${returBelumApprove.length} lokasi)\n`;
+                    }
+                    if (returFinal.length > 0) {
+                        const porsi = returFinal.reduce((sum, r) => sum + r.retur, 0);
+                        text += `  Retur final (sudah disetujui): ${porsi} porsi (${returFinal.length} lokasi)\n`;
+                    }
                 });
 
                 text += `\n*Detail per Lokasi:*\n`;
