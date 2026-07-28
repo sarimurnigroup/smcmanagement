@@ -535,7 +535,7 @@
 
                 const rowAction = (currentProfile.role === 'direksi')
                     ? `<span class="text-outline-variant text-[10px] uppercase font-bold tracking-tighter">Lihat Saja</span>`
-                    : (siklus.key === 'terkirim')
+                    : (siklus.key === 'terkirim' || siklus.key === 'sebagian')
                     ? `<div class="flex items-center gap-3">
                         <input type="checkbox" class="approve-checkbox w-4 h-4 rounded border-outline-variant text-sm-gold focus:ring-sm-gold" data-log-id="${row.log_id}" onchange="updateApproveButton()">
                         <button onclick="approveSingle('${row.log_id}')" class="bg-sm-gold text-on-secondary px-3 py-1 rounded text-xs font-bold hover:brightness-110 transition-all">Approve</button>
@@ -850,16 +850,6 @@
             const hitungRetur = list => list.reduce((sum, r) => sum + (r.retur || 0), 0);
             const labelProdukJadwal = r => `${namaProduk[r.product_type]} ${namaMeal[r.meal_time]}`;
 
-            const totalItem = rows.length;
-            const sudahProduksi = rows.filter(r => r.qty_produced !== null).length;
-            const sudahKirim = rows.filter(r => r.qty_received !== null).length;
-            const sudahApprove = rows.filter(r => r.status === 'approved').length;
-
-            // ===== 1. Header =====
-            let text = `📋 *LAPORAN HARIAN — SM CATERING*\n`;
-            text += `*${formatHariTanggalIndo(tanggal)}*\n`;
-
-            // ===== 2. Total Pengiriman (produksi vs terkirim, per produk+jadwal, dipisah Internal/Mitra) =====
             const urutanProdukTampilan = ['anggota', 'tahanan', 'tahanan_propam'];
             const namaProdukTampilan = { anggota: 'Makan Anggota', tahanan: 'Makan Tahanan', tahanan_propam: 'Makan Tahanan PROPAM' };
 
@@ -885,92 +875,9 @@
                 });
             }
 
-            const internalAwal = rows.filter(r => !r.is_mitra);
-            const mitraAwal = rows.filter(r => r.is_mitra);
-
-            text += `\n*Total Pengiriman:*\n`;
-            text += `\n_Internal (Rute 1-4)_\n`;
-            tulisTotalPengiriman(internalAwal);
-            text += `\n_Mitra SM_\n`;
-            tulisTotalPengiriman(mitraAwal);
-
-            // ===== 3. Ringkasan =====
-            text += `\n*Ringkasan:*\n`;
-            text += `Total jadwal: ${totalItem}\n`;
-            text += `Sudah produksi: ${sudahProduksi}/${totalItem}\n`;
-            text += `Sudah dikirim: ${sudahKirim}/${totalItem}\n`;
-            text += `Sudah disetujui: ${sudahApprove}/${totalItem}\n`;
-
-            // ===== 4. Evaluasi Pekerjaan (dulu Catatan Admin, kondisional) =====
-            const adaCatatan = rows.filter(r => r.catatan_admin);
-            if (adaCatatan.length > 0) {
-                text += `\n*⚠️ Evaluasi Pekerjaan (${adaCatatan.length}):*\n`;
-                const byPersonil = {};
-                const tanpaTag = [];
-                adaCatatan.forEach(r => {
-                    if (r.catatan_tag_nama) {
-                        if (!byPersonil[r.catatan_tag_nama]) byPersonil[r.catatan_tag_nama] = [];
-                        byPersonil[r.catatan_tag_nama].push(r);
-                    } else {
-                        tanpaTag.push(r);
-                    }
-                });
-                Object.keys(byPersonil).sort().forEach(nama => {
-                    text += `\n👤 *${nama}*\n`;
-                    byPersonil[nama].forEach(r => {
-                        text += `- *${r.location_nama}* (*${labelProdukJadwal(r)}*): ${r.catatan_admin}\n`;
-                    });
-                });
-                if (tanpaTag.length > 0) {
-                    text += `\n👤 *Umum (tanpa tag)*\n`;
-                    tanpaTag.forEach(r => {
-                        text += `- *${r.location_nama}* (*${labelProdukJadwal(r)}*): ${r.catatan_admin}\n`;
-                    });
-                }
-            }
-
-            // ===== 5. Anomali Qty Anggota (kondisional) =====
-            const anomaliAnggota = rows.filter(r =>
-                r.product_type === 'anggota' && r.qty_produced !== null && r.default_qty !== null && r.qty_produced !== r.default_qty
-            );
-            if (anomaliAnggota.length > 0) {
-                text += `\n*🔍 Anomali Qty Anggota:*\n`;
-                anomaliAnggota.forEach(r => {
-                    text += `- *${r.location_nama}*: input ${r.qty_produced} porsi (biasanya ${r.default_qty})\n`;
-                });
-            }
-
-            // ===== 6. Performa Pengiriman (dipadetin, 1 baris per rute/mitra) =====
-            const internal = internalAwal;
-            const mitraRows = mitraAwal;
-
-            const byRuteInternal = {};
-            internal.forEach(r => {
-                if (!byRuteInternal[r.route_nama]) byRuteInternal[r.route_nama] = [];
-                byRuteInternal[r.route_nama].push(r);
-            });
-            const byMitra = {};
-            mitraRows.forEach(r => {
-                if (!byMitra[r.route_nama]) byMitra[r.route_nama] = [];
-                byMitra[r.route_nama].push(r);
-            });
-
-            text += `\n*🚚 Performa Pengiriman:*\n\n`;
-            Object.keys(byRuteInternal).sort().forEach(rute => {
-                const list = byRuteInternal[rute];
-                const jmlLokasi = new Set(list.map(r => r.location_nama)).size;
-                text += `*${rute}* (${jmlLokasi} lokasi): ${hitungSelesai(list)}/${list.length} selesai · retur ${hitungRetur(list)} porsi\n`;
-            });
-            text += `\n`;
-            Object.keys(byMitra).sort().forEach(namaMitra => {
-                const list = byMitra[namaMitra];
-                const jmlLokasi = new Set(list.map(r => r.location_nama)).size;
-                text += `*${namaMitra}* (${jmlLokasi} lokasi): ${hitungSelesai(list)}/${list.length} selesai · retur ${hitungRetur(list)} porsi\n`;
-            });
-
-            // ===== 7. Detail per Lokasi (grup Rute/Mitra + Kurir, sub-grup per Jadwal) =====
-            text += `\n*Detail per Lokasi:*\n`;
-
+            // Grup per Rute/Mitra + nama kurir yang submit hari itu, sub-grup per Jadwal.
+            // Kalau 1 lokasi punya lebih dari 1 jenis produk di jadwal yang sama (misal Tahanan +
+            // Tahanan Propam di lokasi yang sama), kasih label jenis produk biar gak ambigu keliatan dobel.
             function tulisGrupRute(list, namaGrup) {
                 if (list.length === 0) return;
                 const kurirList = [...new Set(list.flatMap(r => r.delivered_by_list))];
@@ -981,35 +888,125 @@
                     const items = list.filter(r => r.meal_time === jt);
                     if (items.length === 0) return;
                     text += `\n*Makan ${namaMeal[jt]}*\n`;
+
+                    const countByLokasi = {};
+                    items.forEach(r => { countByLokasi[r.location_nama] = (countByLokasi[r.location_nama] || 0) + 1; });
+
                     items
                         .sort((a, b) => a.location_nama.localeCompare(b.location_nama))
                         .forEach(r => {
+                            const perluLabelProduk = countByLokasi[r.location_nama] > 1;
+                            const labelLokasi = perluLabelProduk ? `${r.location_nama} (${namaProduk[r.product_type]})` : r.location_nama;
                             if (r.qty_produced === null) {
-                                text += `- ${r.location_nama}: belum ada input produksi\n`;
+                                text += `- ${labelLokasi}: belum ada input produksi\n`;
                                 return;
                             }
                             let statusText = 'siap kirim';
                             if (r.qty_received !== null) statusText = r.status === 'approved' ? 'selesai & disetujui' : 'sudah terkirim';
                             const returText = r.retur > 0 ? `, retur ${r.retur}` : '';
-                            text += `- ${r.location_nama}: ${r.qty_produced} porsi (${statusText}${returText})\n`;
+                            text += `- ${labelLokasi}: ${r.qty_produced} porsi (${statusText}${returText})\n`;
                         });
                 });
             }
 
-            Object.keys(byRuteInternal).sort().forEach(rute => tulisGrupRute(byRuteInternal[rute], rute));
-            Object.keys(byMitra).sort().forEach(namaMitra => tulisGrupRute(byMitra[namaMitra], namaMitra));
+            // Satu bab lengkap (semua section) buat 1 kelompok baris (internal ATAU mitra)
+            function bangunBab(list, judulBab) {
+                text += `\n═══════════════════\n${judulBab}\n═══════════════════\n`;
 
-            // ===== 7. Personil Hari Ini =====
-            const produksiHariIni = [...new Set(rows.filter(r => r.input_by_nama).map(r => r.input_by_nama))].sort();
-            const deliveryHariIni = [...new Set(rows.flatMap(r => r.delivered_by_list))].sort();
-            const adminHariIni = [...new Set(rows.filter(r => r.approved_by_nama).map(r => r.approved_by_nama))].sort();
+                if (list.length === 0) {
+                    text += `\n_Tidak ada jadwal untuk kelompok ini._\n`;
+                    return;
+                }
 
-            text += `\n*👥 Personil Hari Ini:*\n`;
-            text += `- Produksi: ${produksiHariIni.length > 0 ? produksiHariIni.map(n => `*${n}*`).join(', ') : '—'}\n`;
-            text += `- Delivery: ${deliveryHariIni.length > 0 ? deliveryHariIni.map(n => `*${n}*`).join(', ') : '—'}\n`;
-            text += `- Admin: ${adminHariIni.length > 0 ? adminHariIni.map(n => `*${n}*`).join(', ') : '—'}\n`;
+                text += `\n*Total Pengiriman:*\n`;
+                tulisTotalPengiriman(list);
 
-            // ===== 8. Closing & Sign-off =====
+                const totalItemBab = list.length;
+                const sudahProduksiBab = list.filter(r => r.qty_produced !== null).length;
+                const sudahKirimBab = list.filter(r => r.qty_received !== null).length;
+                const sudahApproveBab = list.filter(r => r.status === 'approved').length;
+                text += `\n*Ringkasan:*\n`;
+                text += `Total jadwal: ${totalItemBab}\n`;
+                text += `Sudah produksi: ${sudahProduksiBab}/${totalItemBab}\n`;
+                text += `Sudah dikirim: ${sudahKirimBab}/${totalItemBab}\n`;
+                text += `Sudah disetujui: ${sudahApproveBab}/${totalItemBab}\n`;
+
+                const adaCatatanBab = list.filter(r => r.catatan_admin);
+                if (adaCatatanBab.length > 0) {
+                    text += `\n*⚠️ Evaluasi Pekerjaan (${adaCatatanBab.length}):*\n`;
+                    const byPersonilBab = {};
+                    const tanpaTagBab = [];
+                    adaCatatanBab.forEach(r => {
+                        if (r.catatan_tag_nama) {
+                            if (!byPersonilBab[r.catatan_tag_nama]) byPersonilBab[r.catatan_tag_nama] = [];
+                            byPersonilBab[r.catatan_tag_nama].push(r);
+                        } else {
+                            tanpaTagBab.push(r);
+                        }
+                    });
+                    Object.keys(byPersonilBab).sort().forEach(nama => {
+                        text += `\n👤 *${nama}*\n`;
+                        byPersonilBab[nama].forEach(r => {
+                            text += `- *${r.location_nama}* (*${labelProdukJadwal(r)}*): ${r.catatan_admin}\n`;
+                        });
+                    });
+                    if (tanpaTagBab.length > 0) {
+                        text += `\n👤 *Umum (tanpa tag)*\n`;
+                        tanpaTagBab.forEach(r => {
+                            text += `- *${r.location_nama}* (*${labelProdukJadwal(r)}*): ${r.catatan_admin}\n`;
+                        });
+                    }
+                }
+
+                const anomaliBab = list.filter(r =>
+                    r.product_type === 'anggota' && r.qty_produced !== null && r.default_qty !== null && r.qty_produced !== r.default_qty
+                );
+                if (anomaliBab.length > 0) {
+                    text += `\n*🔍 Anomali Qty Anggota:*\n`;
+                    anomaliBab.forEach(r => {
+                        text += `- *${r.location_nama}*: input ${r.qty_produced} porsi (biasanya ${r.default_qty})\n`;
+                    });
+                }
+
+                const byRute = {};
+                list.forEach(r => {
+                    if (!byRute[r.route_nama]) byRute[r.route_nama] = [];
+                    byRute[r.route_nama].push(r);
+                });
+
+                text += `\n*🚚 Performa Pengiriman:*\n\n`;
+                Object.keys(byRute).sort().forEach(rute => {
+                    const rl = byRute[rute];
+                    const jmlLokasi = new Set(rl.map(r => r.location_nama)).size;
+                    text += `*${rute}* (${jmlLokasi} lokasi): ${hitungSelesai(rl)}/${rl.length} selesai · retur ${hitungRetur(rl)} porsi\n`;
+                });
+
+                text += `\n*Detail per Lokasi:*\n`;
+                Object.keys(byRute).sort().forEach(rute => tulisGrupRute(byRute[rute], rute));
+
+                const produksiBab = [...new Set(list.filter(r => r.input_by_nama).map(r => r.input_by_nama))].sort();
+                const deliveryBab = [...new Set(list.flatMap(r => r.delivered_by_list))].sort();
+                const adminBab = [...new Set(list.filter(r => r.approved_by_nama).map(r => r.approved_by_nama))].sort();
+
+                text += `\n*👥 Personil:*\n`;
+                text += `- Produksi: ${produksiBab.length > 0 ? produksiBab.map(n => `*${n}*`).join(', ') : '—'}\n`;
+                text += `- Delivery: ${deliveryBab.length > 0 ? deliveryBab.map(n => `*${n}*`).join(', ') : '—'}\n`;
+                text += `- Admin: ${adminBab.length > 0 ? adminBab.map(n => `*${n}*`).join(', ') : '—'}\n`;
+            }
+
+            // ===== 1. Header =====
+            let text = `📋 *LAPORAN HARIAN — SM CATERING*\n`;
+            text += `*${formatHariTanggalIndo(tanggal)}*\n`;
+
+            // ===== 2. Bab per kelompok (SM Catering internal, lalu Mitra SM) =====
+            const internalAwal = rows.filter(r => !r.is_mitra);
+            const mitraAwal = rows.filter(r => r.is_mitra);
+
+            bangunBab(internalAwal, '🏢 SM CATERING (INTERNAL)');
+            bangunBab(mitraAwal, '🤝 MITRA SM');
+
+            // ===== 3. Closing & Sign-off (gabungan, buat semua tim) =====
+            text += `\n═══════════════════\n`;
             text += `\nTerima kasih atas kerja keras seluruh tim Produksi, Delivery, dan Mitra hari ini. Setiap porsi yang sampai dengan baik adalah hasil dari dedikasi kalian menjalankan tugas, sekecil apapun kelihatannya.\n`;
             text += `\nSalam hangat dari Dewan Direksi SM Group.\n`;
             text += `\n➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖\n`;
