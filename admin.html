@@ -188,6 +188,14 @@
 </select>
 </div>
 <div class="flex flex-col gap-1">
+<label class="text-[10px] font-bold text-outline uppercase tracking-tighter">Kelompok</label>
+<select class="border-outline-variant rounded-lg font-label-md text-sm pl-3 pr-8 py-2 bg-background min-w-[160px]" id="filter-kelompok">
+<option value="internal">Internal (SM Catering)</option>
+<option value="mitra">Mitra SM</option>
+<option value="semua">Semua</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
 <label class="text-[10px] font-bold text-outline uppercase tracking-tighter">Produk</label>
 <select class="border-outline-variant rounded-lg font-label-md text-sm pl-3 pr-8 py-2 bg-background min-w-[160px]" id="filter-produk">
 <option value="">Semua Produk</option>
@@ -362,7 +370,30 @@
 <button id="btn-save-catatan" onclick="saveCatatan()" class="text-[10px] font-bold text-white uppercase px-3 py-1.5 rounded bg-sm-gold hover:brightness-110 transition-all">Simpan</button>
 </div>
 </div>
-<!-- Script Sources -->
+
+<!-- Input Manual Popover - buat superuser input delivery atas nama kurir yang HP-nya mati/gak ada sinyal -->
+<div class="hidden fixed z-[110] bg-surface rounded-xl shadow-2xl border border-outline-variant p-3 w-72" id="manual-popover">
+<p class="text-[10px] text-outline mb-2 italic leading-snug">Buat kondisi HP kurir mati / gak ada sinyal. Data ini bakal ditandai "Manual".</p>
+<label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Dikirim Oleh</label>
+<select id="manual-personil-select" class="w-full text-xs border border-outline-variant rounded-lg p-2 bg-background mb-2 focus:ring-1 focus:ring-sm-gold">
+<option value="">— Pilih personil —</option>
+</select>
+<label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Qty Diterima (sisa: <span id="manual-sisa-label">0</span>)</label>
+<input type="number" id="manual-qty-input" min="0" class="w-full text-xs border border-outline-variant rounded-lg p-2 bg-background mb-2 focus:ring-1 focus:ring-sm-gold" placeholder="0">
+<label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Status Penerima</label>
+<select id="manual-status-select" class="w-full text-xs border border-outline-variant rounded-lg p-2 bg-background mb-2 focus:ring-1 focus:ring-sm-gold" onchange="toggleManualNamaPenerima()">
+<option value="diterima_langsung">Diterima Langsung</option>
+<option value="tidak_ada_penerima">Tidak Ada Penerima</option>
+</select>
+<div id="manual-nama-wrap">
+<label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Nama Penerima</label>
+<input type="text" id="manual-nama-input" class="w-full text-xs border border-outline-variant rounded-lg p-2 bg-background mb-2 focus:ring-1 focus:ring-sm-gold" placeholder="Nama yang menerima">
+</div>
+<div class="flex justify-end gap-2 mt-2">
+<button onclick="closeManualPopover()" class="text-[10px] font-bold text-outline uppercase px-3 py-1.5 rounded hover:bg-surface-container-high transition-all">Batal</button>
+<button id="btn-save-manual" onclick="saveInputManual()" class="text-[10px] font-bold text-white uppercase px-3 py-1.5 rounded bg-primary hover:brightness-110 transition-all">Simpan</button>
+</div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="supabase-client.js"></script>
 <script src="auth-guard.js"></script>
@@ -378,6 +409,11 @@
             malam: 'bg-indigo-100 text-indigo-700'
         };
         const namaProduk = { tahanan: 'Tahanan', anggota: 'Anggota', tahanan_propam: 'Tahanan Propam' };
+        const warnaProduk = {
+            tahanan: 'background:#ffe4e6;color:#be123c;',
+            anggota: 'background:#ede9fe;color:#6d28d9;',
+            tahanan_propam: 'background:#ecfccb;color:#4d7c0f;'
+        };
         const mealOrder = { pagi: 0, siang: 1, malam: 2 };
 
         // Helper functions
@@ -436,7 +472,7 @@
             const tableBody = document.getElementById('table-body');
             tableBody.innerHTML = '<tr><td colspan="13" class="p-12 text-center text-outline-variant"><div class="flex flex-col items-center gap-4"><div class="w-12 h-12 border-4 border-sm-blue border-t-transparent rounded-full animate-spin"></div><span class="font-headline-md text-primary">Memuat data operasional...</span></div></td></tr>';
 
-            const { data: lp, error: lpErr } = await supabaseClient.from('location_products').select('location_id, product_type, meal_time, locations(nama)').order('location_id');
+            const { data: lp, error: lpErr } = await supabaseClient.from('location_products').select('location_id, product_type, meal_time, locations(nama, routes(is_mitra))').order('location_id');
             const { data: pl, error: plErr } = await supabaseClient.from('production_logs').select('id, location_id, product_type, meal_time, qty_produced, status, catatan_admin, catatan_tag_user_id, tagged_user:users!catatan_tag_user_id(nama), users!input_by(nama), approved_user:users!approved_by(nama)').eq('tanggal', tanggal);
 
             if (lpErr || plErr) {
@@ -458,6 +494,7 @@
                 const namaKurirList = [...new Set(deliveries.map(d => d.users?.nama).filter(Boolean))];
                 return {
                     location_nama: item.locations.nama,
+                    is_mitra: item.locations.routes ? item.locations.routes.is_mitra : false,
                     product_type: item.product_type,
                     meal_time: item.meal_time,
                     log_id: prod ? prod.id : null,
@@ -485,12 +522,15 @@
 
         function renderTable() {
             const fLokasi = document.getElementById('filter-lokasi').value;
+            const fKelompok = document.getElementById('filter-kelompok').value;
             const fProduk = document.getElementById('filter-produk').value;
             const fMeal = document.getElementById('filter-meal').value;
             const fStatus = document.getElementById('filter-status').value;
 
             const filtered = currentRows.filter(r => {
                 if (fLokasi && r.location_nama !== fLokasi) return false;
+                if (fKelompok === 'internal' && r.is_mitra) return false;
+                if (fKelompok === 'mitra' && !r.is_mitra) return false;
                 if (fProduk && r.product_type !== fProduk) return false;
                 if (fMeal && r.meal_time !== fMeal) return false;
                 if (fStatus && computeStatusSiklus(r).key !== fStatus) return false;
@@ -525,11 +565,23 @@
                     ? `<button onclick="openCatatan('${row.log_id}', this)" class="p-2 rounded-full border transition-all ${row.catatan_admin ? 'bg-orange-100 border-orange-300 text-orange-600' : 'bg-surface-container border-outline-variant text-outline hover:bg-orange-50 hover:text-orange-500'}" title="${catatanTooltip}"><span class="material-symbols-outlined text-sm">${row.catatan_admin ? 'sticky_note_2' : 'note_add'}</span></button>`
                     : '';
 
-                const mediaActions = (row.photo_url || catatanIcon)
-                    ? `<div class="flex gap-2 items-center">
+                const sisaBelumKirim = row.log_id && (row.qty_received === null || row.qty_received < row.qty_produced);
+                const manualIcon = (currentProfile.role === 'superuser' && sisaBelumKirim)
+                    ? `<button onclick="openInputManual('${row.log_id}', this)" class="p-2 rounded-full border border-outline-variant bg-surface-container text-outline hover:bg-primary/10 hover:text-primary transition-all" title="Input Manual (HP kurir mati/gak ada sinyal)"><span class="material-symbols-outlined text-sm">edit_note</span></button>`
+                    : '';
+
+                const adaFotoManual = row.qty_received !== null && !row.photo_url;
+                const manualBadge = adaFotoManual
+                    ? `<span class="text-[9px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded uppercase tracking-tighter" title="Data ini diinput manual oleh superuser, bukan lewat app kurir">✍️ Manual</span>`
+                    : '';
+
+                const mediaActions = (row.photo_url || catatanIcon || manualIcon || manualBadge)
+                    ? `<div class="flex gap-2 items-center flex-wrap">
                         ${row.photo_url ? `<a href="${row.photo_url}" target="_blank" class="p-2 rounded-full bg-surface-container border border-outline-variant hover:bg-sm-gold/10 hover:text-sm-gold transition-all" title="Lihat Foto"><span class="material-symbols-outlined text-sm">image</span></a>` : ''}
                         ${row.photo_url ? `<a href="https://www.google.com/maps?q=${row.gps_lat},${row.gps_lng}" target="_blank" class="p-2 rounded-full bg-surface-container border border-outline-variant hover:bg-primary/10 hover:text-primary transition-all" title="Buka GPS"><span class="material-symbols-outlined text-sm">location_on</span></a>` : ''}
                         ${catatanIcon}
+                        ${manualIcon}
+                        ${manualBadge}
                        </div>`
                     : '<span class="text-outline-variant">—</span>';
 
@@ -544,7 +596,7 @@
 
                 tr.innerHTML = `
                     <td class="p-4 font-bold text-primary table-sticky-col">${row.location_nama}</td>
-                    <td class="p-4">${namaProduk[row.product_type]}</td>
+                    <td class="p-4"><span style="${warnaProduk[row.product_type] || ''}" class="px-2 py-1 rounded text-xs font-bold">${namaProduk[row.product_type]}</span></td>
                     <td class="p-4"><span class="px-2 py-1 rounded text-xs uppercase font-bold ${mealBadgeColor[row.meal_time]}">${namaMeal[row.meal_time]}</span></td>
                     <td class="p-4">${qtyDisplay}</td>
                     <td class="p-4"><span class="badge px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wide shadow-sm ${siklus.cls}">${siklus.label}</span></td>
@@ -694,11 +746,108 @@
 
         document.addEventListener('click', function (e) {
             const popover = document.getElementById('catatan-popover');
-            if (popover.classList.contains('hidden')) return;
-            if (popover.contains(e.target)) return;
-            if (e.target.closest('[onclick^="openCatatan"]')) return;
-            closeCatatanPopover();
+            if (!popover.classList.contains('hidden') && !popover.contains(e.target) && !e.target.closest('[onclick^="openCatatan"]')) {
+                closeCatatanPopover();
+            }
+            const manualPop = document.getElementById('manual-popover');
+            if (!manualPop.classList.contains('hidden') && !manualPop.contains(e.target) && !e.target.closest('[onclick^="openInputManual"]')) {
+                closeManualPopover();
+            }
         });
+
+        let activeManualLogId = null;
+        let activeManualSisa = 0;
+
+        function posisikanPopover(popover, btnEl) {
+            popover.classList.remove('hidden');
+            const rect = btnEl.getBoundingClientRect();
+            const popW = popover.offsetWidth || 288;
+            let left = rect.left;
+            if (left + popW > window.innerWidth - 16) left = window.innerWidth - popW - 16;
+            popover.style.left = left + 'px';
+            popover.style.top = (rect.bottom + 8) + 'px';
+            requestAnimationFrame(() => {
+                const popRect = popover.getBoundingClientRect();
+                if (popRect.bottom > window.innerHeight - 16) {
+                    popover.style.top = (rect.top - popRect.height - 8) + 'px';
+                }
+            });
+        }
+
+        function openInputManual(logId, btnEl) {
+            const popover = document.getElementById('manual-popover');
+            if (!popover.classList.contains('hidden') && activeManualLogId === logId) {
+                closeManualPopover();
+                return;
+            }
+            closeCatatanPopover();
+
+            activeManualLogId = logId;
+            const row = currentRows.find(r => r.log_id === logId);
+            activeManualSisa = row ? (row.qty_produced - (row.qty_received || 0)) : 0;
+
+            const personilSelect = document.getElementById('manual-personil-select');
+            personilSelect.innerHTML = '<option value="">— Pilih personil —</option>' +
+                taggableUsers.map(u => `<option value="${u.id}">${u.nama}</option>`).join('');
+
+            document.getElementById('manual-sisa-label').textContent = activeManualSisa;
+            document.getElementById('manual-qty-input').value = activeManualSisa > 0 ? activeManualSisa : '';
+            document.getElementById('manual-qty-input').max = activeManualSisa;
+            document.getElementById('manual-status-select').value = 'diterima_langsung';
+            document.getElementById('manual-nama-input').value = '';
+            toggleManualNamaPenerima();
+
+            posisikanPopover(popover, btnEl);
+        }
+
+        function toggleManualNamaPenerima() {
+            const status = document.getElementById('manual-status-select').value;
+            document.getElementById('manual-nama-wrap').classList.toggle('hidden', status === 'tidak_ada_penerima');
+        }
+
+        function closeManualPopover() {
+            document.getElementById('manual-popover').classList.add('hidden');
+            activeManualLogId = null;
+        }
+
+        async function saveInputManual() {
+            if (!activeManualLogId) return;
+            const personilId = document.getElementById('manual-personil-select').value;
+            const qty = parseInt(document.getElementById('manual-qty-input').value, 10);
+            const status = document.getElementById('manual-status-select').value;
+            const namaPenerima = document.getElementById('manual-nama-input').value.trim();
+
+            if (!personilId) { alert('Pilih personil yang mengirim dulu.'); return; }
+            if (isNaN(qty) || qty < 0) { alert('Qty diterima gak valid.'); return; }
+            if (status === 'diterima_langsung' && !namaPenerima) { alert('Nama penerima wajib diisi kalau statusnya Diterima Langsung.'); return; }
+
+            const personil = taggableUsers.find(u => u.id === personilId);
+            const saveBtn = document.getElementById('btn-save-manual');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = '...';
+            saveBtn.disabled = true;
+
+            const { error } = await supabaseClient.from('delivery_logs').insert({
+                production_log_id: activeManualLogId,
+                qty_produced: activeManualSisa,
+                qty_received: qty,
+                submitted_by: personilId,
+                submitted_by_nama: personil ? personil.nama : null,
+                receiver_status: status,
+                receiver_name: status === 'diterima_langsung' ? namaPenerima : null
+            });
+
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+
+            if (error) {
+                alert('Gagal menyimpan input manual: ' + error.message);
+                return;
+            }
+
+            closeManualPopover();
+            await loadData();
+        }
 
         function showPopup(msg) {
             document.getElementById('popup-message').innerText = msg;
@@ -747,6 +896,7 @@
 
                 document.getElementById('date-picker').addEventListener('change', loadData);
                 document.getElementById('filter-lokasi').addEventListener('change', renderTable);
+                document.getElementById('filter-kelompok').addEventListener('change', renderTable);
                 document.getElementById('filter-produk').addEventListener('change', renderTable);
                 document.getElementById('filter-meal').addEventListener('change', renderTable);
                 document.getElementById('filter-status').addEventListener('change', renderTable);
