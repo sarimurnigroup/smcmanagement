@@ -394,6 +394,21 @@
 <button id="btn-save-manual" onclick="saveInputManual()" class="text-[10px] font-bold text-white uppercase px-3 py-1.5 rounded bg-primary hover:brightness-110 transition-all">Simpan</button>
 </div>
 </div>
+
+<!-- Input Produksi Manual Popover - buat superuser input produksi yang kelewat/gak sempat diinput staf -->
+<div class="hidden fixed z-[110] bg-surface rounded-xl shadow-2xl border border-outline-variant p-3 w-72" id="produksi-manual-popover">
+<p class="text-[10px] text-outline mb-2 italic leading-snug">Buat kondisi staf produksi belum sempat input. Data ini bakal berstatus Pending seperti biasa.</p>
+<label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Diinput Atas Nama</label>
+<select id="produksi-manual-personil-select" class="w-full text-xs border border-outline-variant rounded-lg p-2 bg-background mb-2 focus:ring-1 focus:ring-sm-gold">
+<option value="">— Pilih personil —</option>
+</select>
+<label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Qty Produksi</label>
+<input type="number" id="produksi-manual-qty-input" min="0" class="w-full text-xs border border-outline-variant rounded-lg p-2 bg-background mb-2 focus:ring-1 focus:ring-sm-gold" placeholder="0">
+<div class="flex justify-end gap-2 mt-2">
+<button onclick="closeInputProduksiPopover()" class="text-[10px] font-bold text-outline uppercase px-3 py-1.5 rounded hover:bg-surface-container-high transition-all">Batal</button>
+<button id="btn-save-produksi-manual" onclick="saveInputProduksi()" class="text-[10px] font-bold text-white uppercase px-3 py-1.5 rounded bg-primary hover:brightness-110 transition-all">Simpan</button>
+</div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="supabase-client.js"></script>
 <script src="auth-guard.js"></script>
@@ -493,6 +508,7 @@
                 const lastDelivery = deliveries.length > 0 ? deliveries[deliveries.length - 1] : null;
                 const namaKurirList = [...new Set(deliveries.map(d => d.users?.nama).filter(Boolean))];
                 return {
+                    location_id: item.location_id,
                     location_nama: item.locations.nama,
                     is_mitra: item.locations.routes ? item.locations.routes.is_mitra : false,
                     product_type: item.product_type,
@@ -592,6 +608,8 @@
                         <input type="checkbox" class="approve-checkbox w-4 h-4 rounded border-outline-variant text-sm-gold focus:ring-sm-gold" data-log-id="${row.log_id}" onchange="updateApproveButton()">
                         <button onclick="approveSingle('${row.log_id}')" class="bg-sm-gold text-on-secondary px-3 py-1 rounded text-xs font-bold hover:brightness-110 transition-all">Approve</button>
                        </div>`
+                    : (currentProfile.role === 'superuser' && siklus.key === 'belum_produksi')
+                    ? `<button onclick="openInputProduksi('${row.location_id}', '${row.product_type}', '${row.meal_time}', this)" class="bg-primary text-white px-3 py-1 rounded text-xs font-bold hover:brightness-110 transition-all">Input Produksi</button>`
                     : `<span class="text-outline-variant text-[10px] uppercase font-bold tracking-tighter">Dikunci</span>`;
 
                 tr.innerHTML = `
@@ -670,6 +688,8 @@
                 closeCatatanPopover();
                 return;
             }
+            closeManualPopover();
+            closeInputProduksiPopover();
 
             activeCatatanLogId = logId;
             const row = currentRows.find(r => r.log_id === logId);
@@ -753,6 +773,10 @@
             if (!manualPop.classList.contains('hidden') && !manualPop.contains(e.target) && !e.target.closest('[onclick^="openInputManual"]')) {
                 closeManualPopover();
             }
+            const produksiManualPop = document.getElementById('produksi-manual-popover');
+            if (!produksiManualPop.classList.contains('hidden') && !produksiManualPop.contains(e.target) && !e.target.closest('[onclick^="openInputProduksi"]')) {
+                closeInputProduksiPopover();
+            }
         });
 
         let activeManualLogId = null;
@@ -781,6 +805,7 @@
                 return;
             }
             closeCatatanPopover();
+            closeInputProduksiPopover();
 
             activeManualLogId = logId;
             const row = currentRows.find(r => r.log_id === logId);
@@ -846,6 +871,73 @@
             }
 
             closeManualPopover();
+            await loadData();
+        }
+
+        let activeProduksiManual = null; // { locationId, productType, mealTime }
+
+        function openInputProduksi(locationId, productType, mealTime, btnEl) {
+            const popover = document.getElementById('produksi-manual-popover');
+            const isSame = activeProduksiManual
+                && activeProduksiManual.locationId === locationId
+                && activeProduksiManual.productType === productType
+                && activeProduksiManual.mealTime === mealTime;
+            if (!popover.classList.contains('hidden') && isSame) {
+                closeInputProduksiPopover();
+                return;
+            }
+            closeCatatanPopover();
+            closeManualPopover();
+
+            activeProduksiManual = { locationId, productType, mealTime };
+
+            const personilSelect = document.getElementById('produksi-manual-personil-select');
+            personilSelect.innerHTML = '<option value="">— Pilih personil —</option>' +
+                taggableUsers.map(u => `<option value="${u.id}">${u.nama}</option>`).join('');
+            document.getElementById('produksi-manual-qty-input').value = '';
+
+            posisikanPopover(popover, btnEl);
+        }
+
+        function closeInputProduksiPopover() {
+            document.getElementById('produksi-manual-popover').classList.add('hidden');
+            activeProduksiManual = null;
+        }
+
+        async function saveInputProduksi() {
+            if (!activeProduksiManual) return;
+            const personilId = document.getElementById('produksi-manual-personil-select').value;
+            const qty = parseInt(document.getElementById('produksi-manual-qty-input').value, 10);
+
+            if (!personilId) { alert('Pilih personil dulu.'); return; }
+            if (isNaN(qty) || qty < 0) { alert('Qty produksi gak valid.'); return; }
+
+            const personil = taggableUsers.find(u => u.id === personilId);
+            const tanggal = document.getElementById('date-picker').value;
+            const saveBtn = document.getElementById('btn-save-produksi-manual');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = '...';
+            saveBtn.disabled = true;
+
+            const { error } = await supabaseClient.from('production_logs').insert({
+                location_id: activeProduksiManual.locationId,
+                product_type: activeProduksiManual.productType,
+                meal_time: activeProduksiManual.mealTime,
+                tanggal: tanggal,
+                qty_produced: qty,
+                input_by: personilId,
+                input_by_nama: personil ? personil.nama : null
+            });
+
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+
+            if (error) {
+                alert('Gagal menyimpan input produksi: ' + error.message);
+                return;
+            }
+
+            closeInputProduksiPopover();
             await loadData();
         }
 
