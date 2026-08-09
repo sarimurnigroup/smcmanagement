@@ -409,6 +409,16 @@
 <button id="btn-save-produksi-manual" onclick="saveInputProduksi()" class="text-[10px] font-bold text-white uppercase px-3 py-1.5 rounded bg-primary hover:brightness-110 transition-all">Simpan</button>
 </div>
 </div>
+
+<!-- Edit Qty Diterima Popover - list tiap kunjungan delivery, qty-nya bisa diedit satu-satu -->
+<div class="hidden fixed z-[110] bg-surface rounded-xl shadow-2xl border border-outline-variant p-3 w-80" id="edit-diterima-popover">
+<p class="text-[10px] text-outline mb-2 italic leading-snug">Koreksi qty yang keliru diinput kurir/mitra. Retur otomatis ke-update ulang.</p>
+<div id="edit-diterima-list" class="space-y-2 mb-2"></div>
+<div class="flex justify-end gap-2 mt-2">
+<button onclick="closeEditDiterimaPopover()" class="text-[10px] font-bold text-outline uppercase px-3 py-1.5 rounded hover:bg-surface-container-high transition-all">Tutup</button>
+<button id="btn-save-diterima" onclick="saveEditDiterima()" class="text-[10px] font-bold text-white uppercase px-3 py-1.5 rounded bg-primary hover:brightness-110 transition-all">Simpan</button>
+</div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="supabase-client.js"></script>
 <script src="auth-guard.js"></script>
@@ -498,7 +508,7 @@
             const logIds = pl.map(p => p.id);
             let dl = [];
             if (logIds.length > 0) {
-                const { data: dls } = await supabaseClient.from('delivery_logs').select('production_log_id, qty_received, retur, photo_url, gps_lat, gps_lng, receiver_name, timestamp, users!submitted_by(nama)').in('production_log_id', logIds).order('timestamp', { ascending: true });
+                const { data: dls } = await supabaseClient.from('delivery_logs').select('id, production_log_id, qty_received, retur, photo_url, gps_lat, gps_lng, receiver_name, timestamp, users!submitted_by(nama)').in('production_log_id', logIds).order('timestamp', { ascending: true });
                 dl = dls || [];
             }
 
@@ -528,7 +538,8 @@
                     receiver_name: lastDelivery ? lastDelivery.receiver_name : null,
                     photo_url: lastDelivery ? lastDelivery.photo_url : null,
                     gps_lat: lastDelivery ? lastDelivery.gps_lat : null,
-                    gps_lng: lastDelivery ? lastDelivery.gps_lng : null
+                    gps_lng: lastDelivery ? lastDelivery.gps_lng : null,
+                    deliveries: deliveries
                 };
             });
 
@@ -621,7 +632,10 @@
                     <td class="p-4 text-xs font-medium">${row.input_by_nama || '—'}</td>
                     <td class="p-4 text-xs font-medium">${row.approved_by_nama || '—'}</td>
                     <td class="p-4 text-xs font-medium">${row.delivered_by_nama || '—'}</td>
-                    <td class="p-4 font-bold">${row.qty_received ?? '—'}${row.jumlah_kunjungan > 1 ? `<span class="ml-1 text-[9px] font-bold text-sm-gold align-top">×${row.jumlah_kunjungan}</span>` : ''}</td>
+                    <td class="p-4 font-bold">
+                        ${row.qty_received ?? '—'}${row.jumlah_kunjungan > 1 ? `<span class="ml-1 text-[9px] font-bold text-sm-gold align-top">×${row.jumlah_kunjungan}</span>` : ''}
+                        ${(row.jumlah_kunjungan > 0 && currentProfile.role !== 'direksi') ? `<button onclick="openEditDiterima('${row.log_id}', this)" class="opacity-0 group-hover:opacity-100 material-symbols-outlined text-xs p-1 ml-1 rounded hover:bg-surface-container-high transition-all align-middle">edit</button>` : ''}
+                    </td>
                     <td class="p-4"><span class="${row.retur > 0 ? 'text-error font-bold' : 'text-outline-variant'}">${row.retur ?? '—'}</span></td>
                     <td class="p-4 text-xs italic">${row.receiver_name || '—'}</td>
                     <td class="p-4">${mediaActions}</td>
@@ -690,6 +704,7 @@
             }
             closeManualPopover();
             closeInputProduksiPopover();
+            closeEditDiterimaPopover();
 
             activeCatatanLogId = logId;
             const row = currentRows.find(r => r.log_id === logId);
@@ -777,6 +792,10 @@
             if (!produksiManualPop.classList.contains('hidden') && !produksiManualPop.contains(e.target) && !e.target.closest('[onclick^="openInputProduksi"]')) {
                 closeInputProduksiPopover();
             }
+            const editDiterimaPop = document.getElementById('edit-diterima-popover');
+            if (!editDiterimaPop.classList.contains('hidden') && !editDiterimaPop.contains(e.target) && !e.target.closest('[onclick^="openEditDiterima"]')) {
+                closeEditDiterimaPopover();
+            }
         });
 
         let activeManualLogId = null;
@@ -806,6 +825,7 @@
             }
             closeCatatanPopover();
             closeInputProduksiPopover();
+            closeEditDiterimaPopover();
 
             activeManualLogId = logId;
             const row = currentRows.find(r => r.log_id === logId);
@@ -888,6 +908,7 @@
             }
             closeCatatanPopover();
             closeManualPopover();
+            closeEditDiterimaPopover();
 
             activeProduksiManual = { locationId, productType, mealTime };
 
@@ -938,6 +959,78 @@
             }
 
             closeInputProduksiPopover();
+            await loadData();
+        }
+
+        let activeEditDiterimaLogId = null;
+
+        function openEditDiterima(logId, btnEl) {
+            const popover = document.getElementById('edit-diterima-popover');
+            if (!popover.classList.contains('hidden') && activeEditDiterimaLogId === logId) {
+                closeEditDiterimaPopover();
+                return;
+            }
+            closeCatatanPopover();
+            closeManualPopover();
+            closeInputProduksiPopover();
+
+            activeEditDiterimaLogId = logId;
+            const row = currentRows.find(r => r.log_id === logId);
+            const list = document.getElementById('edit-diterima-list');
+
+            if (!row || row.deliveries.length === 0) {
+                list.innerHTML = '<p class="text-xs text-outline italic">Belum ada kunjungan delivery.</p>';
+            } else {
+                list.innerHTML = row.deliveries.map((d, idx) => {
+                    const waktu = new Date(d.timestamp).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                    const kurir = d.users?.nama || 'Tidak diketahui';
+                    return `<div class="flex items-center justify-between gap-2 border-b border-outline-variant/50 pb-2">
+                        <div class="text-[10px] text-outline leading-tight">
+                            <div class="font-bold text-primary">${kurir}</div>
+                            <div>${waktu}</div>
+                        </div>
+                        <input type="number" min="0" data-delivery-id="${d.id}" value="${d.qty_received}" class="edit-diterima-input w-20 text-xs border border-outline-variant rounded-lg p-1.5 bg-background text-center focus:ring-1 focus:ring-sm-gold">
+                    </div>`;
+                }).join('');
+            }
+
+            posisikanPopover(popover, btnEl);
+        }
+
+        function closeEditDiterimaPopover() {
+            document.getElementById('edit-diterima-popover').classList.add('hidden');
+            activeEditDiterimaLogId = null;
+        }
+
+        async function saveEditDiterima() {
+            const inputs = document.querySelectorAll('.edit-diterima-input');
+            if (inputs.length === 0) { closeEditDiterimaPopover(); return; }
+
+            const saveBtn = document.getElementById('btn-save-diterima');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = '...';
+            saveBtn.disabled = true;
+
+            let gagal = null;
+            for (const input of inputs) {
+                const qty = parseInt(input.value, 10);
+                if (isNaN(qty) || qty < 0) { gagal = 'Ada qty yang gak valid.'; break; }
+                const { error } = await supabaseClient
+                    .from('delivery_logs')
+                    .update({ qty_received: qty })
+                    .eq('id', input.dataset.deliveryId);
+                if (error) { gagal = error.message; break; }
+            }
+
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+
+            if (gagal) {
+                alert('Gagal menyimpan: ' + gagal);
+                return;
+            }
+
+            closeEditDiterimaPopover();
             await loadData();
         }
 
