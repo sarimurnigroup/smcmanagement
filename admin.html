@@ -389,6 +389,9 @@
 <label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Nama Penerima</label>
 <input type="text" id="manual-nama-input" class="w-full text-xs border border-outline-variant rounded-lg p-2 bg-background mb-2 focus:ring-1 focus:ring-sm-gold" placeholder="Nama yang menerima">
 </div>
+<label class="text-[9px] font-bold text-outline uppercase tracking-widest mb-1.5 block">Foto Bukti (opsional)</label>
+<input type="file" id="manual-foto-input" accept="image/*" class="w-full text-[10px] text-outline mb-1">
+<p class="text-[9px] text-outline italic mb-2">Kalau ada — misal kurir sempat kirim foto lewat WA sebelum HP-nya mati.</p>
 <div class="flex justify-end gap-2 mt-2">
 <button onclick="closeManualPopover()" class="text-[10px] font-bold text-outline uppercase px-3 py-1.5 rounded hover:bg-surface-container-high transition-all">Batal</button>
 <button id="btn-save-manual" onclick="saveInputManual()" class="text-[10px] font-bold text-white uppercase px-3 py-1.5 rounded bg-primary hover:brightness-110 transition-all">Simpan</button>
@@ -427,6 +430,8 @@
         let currentProfile = null;
         let currentRows = [];
         let taggableUsers = [];
+        const CLOUDINARY_CLOUD_NAME = 'w21mapdh';
+        const CLOUDINARY_UPLOAD_PRESET = 'smc-management-system';
         const namaMeal = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
         const mealBadgeColor = {
             pagi: 'bg-amber-100 text-amber-700',
@@ -508,7 +513,7 @@
             const logIds = pl.map(p => p.id);
             let dl = [];
             if (logIds.length > 0) {
-                const { data: dls } = await supabaseClient.from('delivery_logs').select('id, production_log_id, qty_received, retur, photo_url, gps_lat, gps_lng, receiver_name, timestamp, users!submitted_by(nama)').in('production_log_id', logIds).order('timestamp', { ascending: true });
+                const { data: dls } = await supabaseClient.from('delivery_logs').select('id, production_log_id, qty_received, retur, photo_url, gps_lat, gps_lng, receiver_name, timestamp, is_manual, users!submitted_by(nama)').in('production_log_id', logIds).order('timestamp', { ascending: true });
                 dl = dls || [];
             }
 
@@ -597,8 +602,8 @@
                     ? `<button onclick="openInputManual('${row.log_id}', this)" class="p-2 rounded-full border border-outline-variant bg-surface-container text-outline hover:bg-primary/10 hover:text-primary transition-all" title="Input Manual (HP kurir mati/gak ada sinyal)"><span class="material-symbols-outlined text-sm">edit_note</span></button>`
                     : '';
 
-                const adaFotoManual = row.qty_received !== null && !row.photo_url;
-                const manualBadge = adaFotoManual
+                const adaManual = row.deliveries.some(d => d.is_manual);
+                const manualBadge = adaManual
                     ? `<span class="text-[9px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded uppercase tracking-tighter" title="Data ini diinput manual oleh superuser, bukan lewat app kurir">✍️ Manual</span>`
                     : '';
 
@@ -840,6 +845,7 @@
             document.getElementById('manual-qty-input').max = activeManualSisa;
             document.getElementById('manual-status-select').value = 'diterima_langsung';
             document.getElementById('manual-nama-input').value = '';
+            document.getElementById('manual-foto-input').value = '';
             toggleManualNamaPenerima();
 
             posisikanPopover(popover, btnEl);
@@ -855,12 +861,49 @@
             activeManualLogId = null;
         }
 
+        async function compressPhoto(file, maxSizeKB, maxDimension) {
+            const img = await new Promise((res, rej) => {
+                const i = new Image();
+                i.onload = () => res(i);
+                i.onerror = rej;
+                i.src = URL.createObjectURL(file);
+            });
+            let w = img.width, h = img.height;
+            if (w > maxDimension || h > maxDimension) {
+                if (w > h) { h = Math.round(h * (maxDimension / w)); w = maxDimension; }
+                else { w = Math.round(w * (maxDimension / h)); h = maxDimension; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            return new Promise(res => {
+                let q = 0.8;
+                const check = () => canvas.toBlob(b => {
+                    if (b.size > maxSizeKB * 1024 && q > 0.3) { q -= 0.1; check(); }
+                    else res(b);
+                }, 'image/jpeg', q);
+                check();
+            });
+        }
+
+        async function uploadToCloudinary(blob, path) {
+            const fd = new FormData();
+            fd.append('file', blob);
+            fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+            fd.append('folder', path);
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error?.message || 'Upload foto gagal');
+            return data.secure_url;
+        }
+
         async function saveInputManual() {
             if (!activeManualLogId) return;
             const personilId = document.getElementById('manual-personil-select').value;
             const qty = parseInt(document.getElementById('manual-qty-input').value, 10);
             const status = document.getElementById('manual-status-select').value;
             const namaPenerima = document.getElementById('manual-nama-input').value.trim();
+            const fotoFile = document.getElementById('manual-foto-input').files[0];
 
             if (!personilId) { alert('Pilih personil yang mengirim dulu.'); return; }
             if (isNaN(qty) || qty < 0) { alert('Qty diterima gak valid.'); return; }
@@ -869,8 +912,23 @@
             const personil = taggableUsers.find(u => u.id === personilId);
             const saveBtn = document.getElementById('btn-save-manual');
             const originalText = saveBtn.textContent;
-            saveBtn.textContent = '...';
             saveBtn.disabled = true;
+
+            let photoUrl = null;
+            if (fotoFile) {
+                try {
+                    saveBtn.textContent = 'Upload foto...';
+                    const compressed = await compressPhoto(fotoFile, 300, 1440);
+                    photoUrl = await uploadToCloudinary(compressed, 'delivery-manual');
+                } catch (err) {
+                    saveBtn.textContent = originalText;
+                    saveBtn.disabled = false;
+                    alert('Gagal upload foto: ' + err.message);
+                    return;
+                }
+            }
+
+            saveBtn.textContent = '...';
 
             const { error } = await supabaseClient.from('delivery_logs').insert({
                 production_log_id: activeManualLogId,
@@ -879,7 +937,9 @@
                 submitted_by: personilId,
                 submitted_by_nama: personil ? personil.nama : null,
                 receiver_status: status,
-                receiver_name: status === 'diterima_langsung' ? namaPenerima : null
+                receiver_name: status === 'diterima_langsung' ? namaPenerima : null,
+                photo_url: photoUrl,
+                is_manual: true
             });
 
             saveBtn.textContent = originalText;
