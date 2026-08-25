@@ -598,7 +598,7 @@
                     : '';
 
                 const sisaBelumKirim = row.log_id && (row.qty_received === null || row.qty_received < row.qty_produced);
-                const manualIcon = (currentProfile.role === 'superuser' && sisaBelumKirim)
+                const manualIcon = ((currentProfile.role === 'superuser' || currentProfile.role === 'admin') && sisaBelumKirim)
                     ? `<button onclick="openInputManual('${row.log_id}', this)" class="p-2 rounded-full border border-outline-variant bg-surface-container text-outline hover:bg-primary/10 hover:text-primary transition-all" title="Input Manual (HP kurir mati/gak ada sinyal)"><span class="material-symbols-outlined text-sm">edit_note</span></button>`
                     : '';
 
@@ -624,7 +624,7 @@
                         <input type="checkbox" class="approve-checkbox w-4 h-4 rounded border-outline-variant text-sm-gold focus:ring-sm-gold" data-log-id="${row.log_id}" onchange="updateApproveButton()">
                         <button onclick="approveSingle('${row.log_id}')" class="bg-sm-gold text-on-secondary px-3 py-1 rounded text-xs font-bold hover:brightness-110 transition-all">Approve</button>
                        </div>`
-                    : (currentProfile.role === 'superuser' && siklus.key === 'belum_produksi')
+                    : ((currentProfile.role === 'superuser' || currentProfile.role === 'admin') && siklus.key === 'belum_produksi')
                     ? `<button onclick="openInputProduksi('${row.location_id}', '${row.product_type}', '${row.meal_time}', this)" class="bg-primary text-white px-3 py-1 rounded text-xs font-bold hover:brightness-110 transition-all">Input Produksi</button>`
                     : `<span class="text-outline-variant text-[10px] uppercase font-bold tracking-tighter">Dikunci</span>`;
 
