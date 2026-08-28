@@ -538,7 +538,7 @@
                     approved_by_nama: prod?.approved_user?.nama,
                     delivered_by_nama: namaKurirList.length > 0 ? namaKurirList.join(', ') : null,
                     qty_received: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + d.qty_received, 0) : null,
-                    retur: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + (d.retur || 0), 0) : null,
+                    retur: deliveries.length > 0 ? Math.max(0, prod.qty_produced - deliveries.reduce((sum, d) => sum + d.qty_received, 0)) : null,
                     jumlah_kunjungan: deliveries.length,
                     receiver_name: lastDelivery ? lastDelivery.receiver_name : null,
                     photo_url: lastDelivery ? lastDelivery.photo_url : null,
@@ -1235,7 +1235,7 @@
                     input_by_nama: prod?.users?.nama,
                     approved_by_nama: prod?.approved_user?.nama,
                     qty_received: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + d.qty_received, 0) : null,
-                    retur: deliveries.length > 0 ? deliveries.reduce((sum, d) => sum + (d.retur || 0), 0) : null,
+                    retur: deliveries.length > 0 ? Math.max(0, prod.qty_produced - deliveries.reduce((sum, d) => sum + d.qty_received, 0)) : null,
                     delivered_by_list: [...new Set(deliveries.map(d => d.submitted_user?.nama).filter(Boolean))]
                 };
             });

@@ -421,8 +421,8 @@ Kembali ke Menu Utama
   function hitungSisa(item) {
     const deliveries = routeDeliveries[item.id] || [];
     const totalDiterima = deliveries.reduce((sum, d) => sum + d.qty_received, 0);
-    const totalRetur = deliveries.reduce((sum, d) => sum + (d.retur || 0), 0);
     const sisa = item.qty_produced - totalDiterima;
+    const totalRetur = Math.max(0, sisa);
     const selesaiPenuh = sisa <= 0 && deliveries.length > 0;
     const selesai = selesaiPenuh || item.status === 'approved';
     return { deliveries, totalDiterima, totalRetur, sisa: sisa > 0 ? sisa : 0, selesai };
