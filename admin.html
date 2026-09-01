@@ -1497,13 +1497,18 @@
                 return;
             }
 
-            const logIds = pl.map(p => p.id);
             let dl = [];
-            if (logIds.length > 0) {
-                const { data: dls } = await supabaseClient
+            if (pl.length > 0) {
+                const { data: dls, error: dlError } = await supabaseClient
                     .from('delivery_logs')
-                    .select('production_log_id, qty_received')
-                    .in('production_log_id', logIds);
+                    .select('production_log_id, qty_received, production_logs!inner(tanggal)')
+                    .gte('production_logs.tanggal', startDate)
+                    .lte('production_logs.tanggal', endDate);
+                if (dlError) {
+                    container.innerHTML = `<div class="p-10 text-center text-error">Gagal memuat data delivery: ${dlError.message}</div>`;
+                    statusLine.innerText = '';
+                    return;
+                }
                 dl = dls || [];
             }
             const deliveryByLog = {};
