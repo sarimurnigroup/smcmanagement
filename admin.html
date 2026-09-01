@@ -439,6 +439,36 @@
             malam: 'bg-indigo-100 text-indigo-700'
         };
         const namaProduk = { tahanan: 'Tahanan', anggota: 'Anggota', tahanan_propam: 'Tahanan Propam' };
+
+        // Mapping Polsek -> Polres induk, dipake buat pengelompokan Laporan Bulanan.
+        // CATATAN: ini draft berdasar pengetahuan umum wilayah kepolisian Jakarta, khususnya
+        // bagian "Polres Pelabuhan Tanjung Priok" belum terverifikasi 100% - koreksi kalau salah.
+        const POLRES_MAPPING = {
+            'Polsek Cilincing': 'Polres Metro Jakarta Utara',
+            'Polsek Kelapa Gading': 'Polres Metro Jakarta Utara',
+            'Polsek Koja': 'Polres Metro Jakarta Utara',
+            'Polsek Pademangan': 'Polres Metro Jakarta Utara',
+            'Polsek Penjaringan': 'Polres Metro Jakarta Utara',
+            'Polsek Tanjung Priok': 'Polres Metro Jakarta Utara',
+            'Polres Metro Jakarta Utara': 'Polres Metro Jakarta Utara',
+
+            'Polsek Kalibaru': 'Polres Pelabuhan Tanjung Priok',
+            'Polsek Muara Baru': 'Polres Pelabuhan Tanjung Priok',
+            'Polsek Sunda Kelapa': 'Polres Pelabuhan Tanjung Priok',
+            'Polres Pelabuhan Tanjung Priok': 'Polres Pelabuhan Tanjung Priok',
+
+            'Polsek Kemayoran': 'Polres Metro Jakarta Pusat',
+            'Polsek Senen': 'Polres Metro Jakarta Pusat',
+            'Polsek Gambir': 'Polres Metro Jakarta Pusat',
+            'Polsek Sawah Besar': 'Polres Metro Jakarta Pusat',
+            'Polsek Cempaka Putih': 'Polres Metro Jakarta Pusat',
+            'Polsek Menteng': 'Polres Metro Jakarta Pusat',
+            'Polsek Johar Baru': 'Polres Metro Jakarta Pusat',
+            'Polsek Tanah Abang': 'Polres Metro Jakarta Pusat',
+            'Polres Metro Jakarta Pusat': 'Polres Metro Jakarta Pusat',
+
+            'Polres Kepulauan Seribu': 'Polres Kepulauan Seribu'
+        };
         const warnaProduk = {
             tahanan: 'background:#ffe4e6;color:#be123c;',
             anggota: 'background:#ede9fe;color:#6d28d9;',
@@ -1472,7 +1502,7 @@
             if (logIds.length > 0) {
                 const { data: dls } = await supabaseClient
                     .from('delivery_logs')
-                    .select('production_log_id, qty_received, retur')
+                    .select('production_log_id, qty_received')
                     .in('production_log_id', logIds);
                 dl = dls || [];
             }
@@ -1482,45 +1512,97 @@
                 deliveryByLog[d.production_log_id].push(d);
             });
 
+            // Tahanan Propam digabung ke kategori "Makan Tahanan" sesuai arahan
+            const kategoriProduk = (pt) => (pt === 'tahanan' || pt === 'tahanan_propam') ? 'tahanan' : 'anggota';
+
             const agg = {};
             pl.forEach(row => {
-                const key = `${row.locations.nama}|${row.product_type}`;
-                if (!agg[key]) agg[key] = { location: row.locations.nama, product: row.product_type, qty_produced: 0, qty_received: 0, retur: 0 };
+                const kategori = kategoriProduk(row.product_type);
+                const key = `${kategori}|${row.locations.nama}`;
+                if (!agg[key]) agg[key] = { kategori, location: row.locations.nama, qty_produced: 0, qty_received: 0 };
                 agg[key].qty_produced += row.qty_produced;
                 const ds = deliveryByLog[row.id] || [];
-                ds.forEach(d => {
-                    agg[key].qty_received += d.qty_received;
-                    agg[key].retur += (d.retur || 0);
+                ds.forEach(d => { agg[key].qty_received += d.qty_received; });
+            });
+
+            // Retur dihitung dari selisih akhir (produksi - diterima), BUKAN jumlahin retur tiap
+            // kunjungan - itu bisa keliru kalau ada kunjungan susulan yang nutup kekurangan
+            // kunjungan sebelumnya (sama bug yang udah dibenerin di Laporan Harian & tabel monitoring).
+            Object.values(agg).forEach(a => { a.retur = Math.max(0, a.qty_produced - a.qty_received); });
+
+            function tulisSection(kategoriKey, judulSection) {
+                const items = Object.values(agg).filter(a => a.kategori === kategoriKey);
+                if (items.length === 0) return '';
+
+                const byPolres = {};
+                items.forEach(a => {
+                    const polres = POLRES_MAPPING[a.location] || a.location;
+                    if (!byPolres[polres]) byPolres[polres] = [];
+                    byPolres[polres].push(a);
                 });
-            });
 
-            const rows = Object.values(agg).sort((a, b) => a.location.localeCompare(b.location) || a.product.localeCompare(b.product));
+                let sectionTotal = 0;
+                let html = `<div class="mb-8">
+                    <h3 class="font-headline-sm text-lg font-bold text-primary mb-3 px-1">${judulSection}</h3>
+                    <div class="bg-surface rounded-xl border border-outline-variant shadow-lg overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-surface-container-low border-b border-outline-variant">
+                                    <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Lokasi</th>
+                                    <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Total Produksi</th>
+                                    <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Total Diterima</th>
+                                    <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Total Retur</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline-variant">`;
 
-            let html = `<div class="bg-surface rounded-xl border border-outline-variant shadow-lg overflow-hidden">
-                <table class="w-full text-left">
-                    <thead>
-                        <tr class="bg-surface-container-low border-b border-outline-variant">
-                            <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Lokasi</th>
-                            <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Produk</th>
-                            <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Total Produksi</th>
-                            <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Total Diterima</th>
-                            <th class="p-4 font-label-sm text-outline uppercase tracking-widest text-xs">Total Retur</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-outline-variant">`;
-            rows.forEach(r => {
-                html += `<tr class="hover:bg-surface-container-low transition-colors">
-                    <td class="p-4 font-bold text-primary">${r.location}</td>
-                    <td class="p-4">${namaProduk[r.product]}</td>
-                    <td class="p-4 font-bold">${r.qty_produced}</td>
-                    <td class="p-4">${r.qty_received}</td>
-                    <td class="p-4 ${r.retur > 0 ? 'text-error font-bold' : 'text-outline-variant'}">${r.retur}</td>
-                </tr>`;
-            });
-            html += `</tbody></table></div>`;
+                Object.keys(byPolres).sort().forEach(polres => {
+                    const list = byPolres[polres].sort((a, b) => a.location.localeCompare(b.location));
+                    const subtotal = list.reduce((s, a) => s + a.qty_produced, 0);
+                    sectionTotal += subtotal;
+
+                    html += `<tr class="bg-surface-container-low/60">
+                        <td colspan="4" class="p-3 font-bold text-primary text-xs uppercase tracking-wide">${polres}</td>
+                    </tr>`;
+                    list.forEach(a => {
+                        html += `<tr class="hover:bg-surface-container-low transition-colors">
+                            <td class="p-4 pl-8">${a.location}</td>
+                            <td class="p-4 font-bold">${a.qty_produced}</td>
+                            <td class="p-4">${a.qty_received}</td>
+                            <td class="p-4 ${a.retur > 0 ? 'text-error font-bold' : 'text-outline-variant'}">${a.retur}</td>
+                        </tr>`;
+                    });
+                    html += `<tr class="bg-surface-container-low/30">
+                        <td class="p-3 pl-8 font-bold text-outline text-xs uppercase">Subtotal ${polres}</td>
+                        <td class="p-3 font-bold text-primary">${subtotal}</td>
+                        <td class="p-3"></td>
+                        <td class="p-3"></td>
+                    </tr>`;
+                });
+
+                html += `</tbody>
+                        <tfoot>
+                            <tr class="bg-primary/5 border-t-2 border-primary/20">
+                                <td class="p-4 font-bold text-primary uppercase text-sm">Total ${judulSection}</td>
+                                <td class="p-4 font-bold text-primary text-base">${sectionTotal}</td>
+                                <td class="p-4"></td>
+                                <td class="p-4"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div></div>`;
+                return html;
+            }
+
+            let html = tulisSection('tahanan', 'Makan Tahanan');
+            html += tulisSection('anggota', 'Makan Anggota');
+
+            if (!html) {
+                html = `<div class="bg-surface rounded-xl border border-outline-variant p-10 text-center italic text-outline">Belum ada data produksi untuk periode ${bulan}.</div>`;
+            }
 
             container.innerHTML = html;
-            statusLine.innerText = `Rekap ${rows.length} baris untuk periode ${bulan}.`;
+            statusLine.innerText = `Rekap ${Object.keys(agg).length} lokasi untuk periode ${bulan}.`;
         }
 
     </script>
