@@ -961,7 +961,11 @@
                 try {
                     saveBtn.textContent = 'Upload foto...';
                     const compressed = await compressPhoto(fotoFile, 300, 1440);
-                    photoUrl = await uploadToCloudinary(compressed, 'delivery-manual');
+                    const rowUntukFolder = currentRows.find(r => r.log_id === activeManualLogId);
+                    const namaLokasiFolder = (rowUntukFolder ? rowUntukFolder.location_nama : 'lokasi').replace(/\s+/g, '_');
+                    const tanggalFolder = document.getElementById('date-picker').value || todayStr();
+                    const path = `delivery/${tanggalFolder}/${namaLokasiFolder}`;
+                    photoUrl = await uploadToCloudinary(compressed, path);
                 } catch (err) {
                     saveBtn.textContent = originalText;
                     saveBtn.disabled = false;
