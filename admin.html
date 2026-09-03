@@ -1295,7 +1295,9 @@
                     if (entries.length === 0) return;
                     text += `\n*${namaProdukTampilan[pt]}*\n`;
                     entries.forEach(e => {
-                        text += `- ${namaMeal[e.meal_time]}: Diproduksi ${e.produksi} porsi | Terkirim ${e.terkirim} porsi\n`;
+                        const kurang = e.produksi - e.terkirim;
+                        const flag = kurang > 0 ? ` ⚠️ (kurang ${kurang})` : '';
+                        text += `- ${namaMeal[e.meal_time]}: ${e.terkirim}/${e.produksi} porsi terkirim${flag}\n`;
                     });
                 });
             }
@@ -1352,9 +1354,9 @@
                 const sudahApproveBab = list.filter(r => r.status === 'approved').length;
                 text += `\n*Ringkasan:*\n`;
                 text += `Total jadwal: ${totalItemBab}\n`;
-                text += `Sudah produksi: ${sudahProduksiBab}/${totalItemBab}\n`;
-                text += `Sudah dikirim: ${sudahKirimBab}/${totalItemBab}\n`;
-                text += `Sudah disetujui: ${sudahApproveBab}/${totalItemBab}\n`;
+                text += `Sudah produksi: ${sudahProduksiBab}/${totalItemBab}${sudahProduksiBab < totalItemBab ? ' ⚠️' : ''}\n`;
+                text += `Sudah dikirim: ${sudahKirimBab}/${totalItemBab}${sudahKirimBab < totalItemBab ? ' ⚠️' : ''}\n`;
+                text += `Sudah disetujui: ${sudahApproveBab}/${totalItemBab}${sudahApproveBab < totalItemBab ? ' ⚠️' : ''}\n`;
 
                 const adaCatatanBab = list.filter(r => r.catatan_admin);
                 if (adaCatatanBab.length > 0) {
