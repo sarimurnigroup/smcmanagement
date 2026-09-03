@@ -1542,16 +1542,20 @@
             pl.forEach(row => {
                 const kategori = kategoriProduk(row.product_type);
                 const key = `${kategori}|${row.locations.nama}`;
-                if (!agg[key]) agg[key] = { kategori, location: row.locations.nama, qty_produced: 0, qty_received: 0 };
-                agg[key].qty_produced += row.qty_produced;
-                const ds = deliveryByLog[row.id] || [];
-                ds.forEach(d => { agg[key].qty_received += d.qty_received; });
-            });
+                if (!agg[key]) agg[key] = { kategori, location: row.locations.nama, qty_produced: 0, qty_received: 0, retur: 0 };
 
-            // Retur dihitung dari selisih akhir (produksi - diterima), BUKAN jumlahin retur tiap
-            // kunjungan - itu bisa keliru kalau ada kunjungan susulan yang nutup kekurangan
-            // kunjungan sebelumnya (sama bug yang udah dibenerin di Laporan Harian & tabel monitoring).
-            Object.values(agg).forEach(a => { a.retur = Math.max(0, a.qty_produced - a.qty_received); });
+                const ds = deliveryByLog[row.id] || [];
+                const diterimaHariIni = ds.reduce((sum, d) => sum + d.qty_received, 0);
+                // Retur dihitung per HARI (per production_log) dulu, baru dijumlahin ke total bulan.
+                // Kalau digabung dulu jadi satu kolam sebulan baru dikurangi, hari yang surplus
+                // (misal habis dikoreksi lewat fitur Edit Qty) bisa "nutupin" defisit di hari lain -
+                // padahal tiap hari harusnya dinilai berdiri sendiri, sama kayak logika di Laporan Harian.
+                const returHariIni = Math.max(0, row.qty_produced - diterimaHariIni);
+
+                agg[key].qty_produced += row.qty_produced;
+                agg[key].qty_received += diterimaHariIni;
+                agg[key].retur += returHariIni;
+            });
 
             function tulisSection(kategoriKey, judulSection) {
                 const items = Object.values(agg).filter(a => a.kategori === kategoriKey);
