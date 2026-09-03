@@ -916,15 +916,27 @@
             });
         }
 
-        async function uploadToCloudinary(blob, path) {
+        async function uploadToCloudinary(blob, path, retryCount) {
+            retryCount = retryCount || 0;
             const fd = new FormData();
             fd.append('file', blob);
             fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
             fd.append('folder', path);
-            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error?.message || 'Upload foto gagal');
-            return data.secure_url;
+            try {
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: fd, mode: 'cors' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error?.message || 'Upload foto gagal');
+                return data.secure_url;
+            } catch (err) {
+                const errJaringan = err.message === 'Failed to fetch' || err.name === 'TypeError';
+                if (errJaringan && retryCount < 2) {
+                    await new Promise(r => setTimeout(r, 1200));
+                    return uploadToCloudinary(blob, path, retryCount + 1);
+                }
+                throw new Error(errJaringan
+                    ? 'Gagal konek ke server foto setelah 3x coba. Cek koneksi internet, atau matikan sementara ad-blocker/extension di browser.'
+                    : err.message);
+            }
         }
 
         async function saveInputManual() {
