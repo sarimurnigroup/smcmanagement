@@ -891,7 +891,7 @@
             activeManualLogId = null;
         }
 
-        async function compressPhoto(file, maxSizeKB, maxDimension) {
+        async function compressAndWatermark(file, maxSizeKB, maxDimension, lines) {
             const img = await new Promise((res, rej) => {
                 const i = new Image();
                 i.onload = () => res(i);
@@ -905,7 +905,20 @@
             }
             const canvas = document.createElement('canvas');
             canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+
+            if (lines && lines.length > 0) {
+                const fontSize = Math.max(12, Math.round(w / 40));
+                const padding = 20;
+                const barH = (lines.length * (fontSize + 8)) + (padding * 2);
+                ctx.fillStyle = 'rgba(0,10,63,0.85)';
+                ctx.fillRect(0, h - barH, w, barH);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = `600 ${fontSize}px Manrope, sans-serif`;
+                lines.forEach((l, i) => ctx.fillText(l, padding, h - barH + padding + fontSize + (i * (fontSize + 8))));
+            }
+
             return new Promise(res => {
                 let q = 0.8;
                 const check = () => canvas.toBlob(b => {
@@ -960,10 +973,18 @@
             if (fotoFile) {
                 try {
                     saveBtn.textContent = 'Upload foto...';
-                    const compressed = await compressPhoto(fotoFile, 300, 1440);
                     const rowUntukFolder = currentRows.find(r => r.log_id === activeManualLogId);
                     const namaLokasiFolder = (rowUntukFolder ? rowUntukFolder.location_nama : 'lokasi').replace(/\s+/g, '_');
                     const tanggalFolder = document.getElementById('date-picker').value || todayStr();
+                    const namaPenerimaTampil = status === 'tidak_ada_penerima' ? 'Tidak Ada Penerima' : namaPenerima;
+                    const watermarks = [
+                        `LOKASI: ${rowUntukFolder ? rowUntukFolder.location_nama : '—'}`,
+                        `PAKET: ${rowUntukFolder ? namaProduk[rowUntukFolder.product_type] : '—'} (${rowUntukFolder ? namaMeal[rowUntukFolder.meal_time] : '—'})`,
+                        `KURIR: ${personil ? personil.nama : '—'}`,
+                        `PENERIMA: ${namaPenerimaTampil}`,
+                        `WAKTU: ${tanggalFolder} (Input Manual oleh ${currentProfile.nama})`
+                    ];
+                    const compressed = await compressAndWatermark(fotoFile, 300, 1440, watermarks);
                     const path = `delivery/${tanggalFolder}/${namaLokasiFolder}`;
                     photoUrl = await uploadToCloudinary(compressed, path);
                 } catch (err) {

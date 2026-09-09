@@ -116,6 +116,7 @@
 <th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Produksi</th>
 <th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Diterima</th>
 <th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Retur</th>
+<th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Penerima</th>
 <th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Personil</th>
 <th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Bukti</th>
 </tr>
@@ -235,7 +236,7 @@
         const logIds = pl.map(p => p.id);
         const { data: dl } = await supabaseClient
             .from('delivery_logs')
-            .select('production_log_id, qty_received, photo_url, gps_lat, gps_lng, submitted_by_nama')
+            .select('production_log_id, qty_received, photo_url, gps_lat, gps_lng, submitted_by_nama, receiver_name, receiver_status')
             .in('production_log_id', logIds);
 
         const deliveryByLog = {};
@@ -244,7 +245,8 @@
             deliveryByLog[d.production_log_id].push(d);
         });
 
-        pl.sort((a, b) => a.locations.nama.localeCompare(b.locations.nama));
+        const mealOrder = { pagi: 0, siang: 1, malam: 2 };
+        pl.sort((a, b) => (mealOrder[a.meal_time] - mealOrder[b.meal_time]) || a.locations.nama.localeCompare(b.locations.nama));
 
         pl.forEach(row => {
             const deliveries = deliveryByLog[row.id] || [];
@@ -260,6 +262,10 @@
                    </div>`
                 : '<span class="text-outline-variant text-xs">—</span>';
 
+            const namaPenerimaTampil = lastDelivery
+                ? (lastDelivery.receiver_status === 'tidak_ada_penerima' ? 'Tidak Ada Penerima' : (lastDelivery.receiver_name || '—'))
+                : '—';
+
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-surface-container-low transition-colors';
             tr.innerHTML = `
@@ -269,6 +275,7 @@
                 <td class="p-4 font-bold">${row.qty_produced}</td>
                 <td class="p-4">${totalDiterima}</td>
                 <td class="p-4 ${totalRetur > 0 ? 'text-error font-bold' : 'text-outline-variant'}">${totalRetur}</td>
+                <td class="p-4 text-xs italic text-on-surface-variant">${namaPenerimaTampil}</td>
                 <td class="p-4 text-xs text-on-surface-variant leading-relaxed">
                     <div><span class="text-outline">Produksi:</span> ${row.input_by_nama || '—'}</div>
                     <div><span class="text-outline">Kirim:</span> ${namaKurir}</div>
