@@ -73,7 +73,7 @@ function redirectByRole(role) {
     admin: 'admin.html',
     superuser: 'admin.html',
     direksi: 'admin.html',
-    polres: 'polres.html'
+    polres: 'rekanan.html'
   };
   window.location.href = tujuan[role] || 'index.html';
 }
