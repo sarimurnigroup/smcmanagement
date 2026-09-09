@@ -12,7 +12,7 @@ async function getProfile() {
 
   const { data, error } = await supabaseClient
     .from('users')
-    .select('id, nama, role, pin_is_temp, is_active, assigned_route_id, email, foto_url, no_wa, no_ktp')
+    .select('id, nama, role, pin_is_temp, is_active, assigned_route_id, email, foto_url, no_wa, no_ktp, polres_nama')
     .eq('id', session.user.id)
     .single();
 
@@ -72,7 +72,8 @@ function redirectByRole(role) {
     delivery: 'delivery.html',
     admin: 'admin.html',
     superuser: 'admin.html',
-    direksi: 'admin.html'
+    direksi: 'admin.html',
+    polres: 'polres.html'
   };
   window.location.href = tujuan[role] || 'index.html';
 }

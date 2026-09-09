@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SM Catering — Portal Monitoring Polres</title>
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    "sm-blue": "#001a72",
+                    "sm-gold": "#C8A24B",
+                    "primary": "#001a72",
+                    "primary-container": "#001a72",
+                    "on-primary": "#ffffff",
+                    "background": "#f8f9fa",
+                    "surface": "#ffffff",
+                    "surface-container-low": "#f3f4f5",
+                    "surface-container": "#edeeef",
+                    "outline": "#757683",
+                    "outline-variant": "#c5c5d3",
+                    "on-surface-variant": "#454651",
+                    "error": "#ba1a1a",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed": "#ffdea5"
+                },
+                fontFamily: {
+                    "headline": ["Libre Caslon Text"],
+                    "body": ["Manrope"]
+                }
+            }
+        }
+    }
+</script>
+<style>
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    body { font-family: 'Manrope', sans-serif; }
+    .heading-serif { font-family: 'Libre Caslon Text', serif; }
+</style>
+</head>
+<body class="bg-background text-[#191c1d] min-h-screen">
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="screen-login" class="min-h-screen flex items-center justify-center p-6">
+<div class="w-full max-w-md animate-in">
+<div class="flex flex-col items-center mb-8">
+<div class="w-20 h-20 rounded-full bg-sm-blue flex items-center justify-center mb-4 shadow-lg">
+<span class="material-symbols-outlined text-4xl text-sm-gold">local_police</span>
+</div>
+<h1 class="heading-serif text-2xl font-bold text-sm-blue text-center leading-tight">Portal Monitoring Polres</h1>
+<p class="text-sm text-gray-500 mt-1">Sari Murni Catering</p>
+</div>
+<div class="bg-surface rounded-2xl shadow-lg border border-outline-variant p-8">
+<div id="login-error" class="hidden mb-4 p-3 bg-error-container text-error rounded-lg text-sm"></div>
+<label class="text-[11px] font-bold text-outline uppercase tracking-widest block mb-1.5">Email</label>
+<input type="email" id="login-email" class="w-full border border-outline-variant rounded-lg p-3 mb-4 focus:ring-2 focus:ring-sm-gold outline-none" placeholder="polres.jakpus@smc.com"/>
+<label class="text-[11px] font-bold text-outline uppercase tracking-widest block mb-1.5">Password</label>
+<input type="password" id="login-password" class="w-full border border-outline-variant rounded-lg p-3 mb-6 focus:ring-2 focus:ring-sm-gold outline-none" placeholder="••••••••"/>
+<button onclick="doLogin()" id="btn-login" class="w-full bg-sm-blue text-white py-3 rounded-xl font-bold shadow-md hover:brightness-110 transition-all">Masuk</button>
+</div>
+<p class="text-center text-xs text-gray-400 mt-6">Portal ini khusus buat mitra Polres/Polsek SM Catering.</p>
+</div>
+</div>
+
+<!-- ===== DASHBOARD SCREEN ===== -->
+<div id="screen-dashboard" class="hidden">
+<header class="bg-sm-blue h-20 fixed top-0 left-0 right-0 z-50 shadow-lg">
+<div class="flex justify-between items-center px-6 md:px-10 w-full max-w-[1800px] mx-auto h-full">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full border-2 border-sm-gold flex items-center justify-center bg-white/10">
+<span class="material-symbols-outlined text-sm-gold">local_police</span>
+</div>
+<div class="flex flex-col">
+<span class="heading-serif text-white text-lg leading-tight" id="polres-nama-header">—</span>
+<span class="text-[10px] font-bold text-secondary-fixed uppercase tracking-widest">Portal Monitoring · SM Catering</span>
+</div>
+</div>
+<button onclick="doLogout()" class="text-white/80 hover:text-white flex items-center gap-1.5 text-sm font-bold transition-colors">
+<span class="material-symbols-outlined text-lg">logout</span> Keluar
+</button>
+</div>
+</header>
+
+<main class="pt-28 pb-16 px-6 md:px-10 max-w-[1800px] mx-auto">
+
+<div class="bg-surface rounded-xl border border-outline-variant p-4 mb-6 flex flex-wrap gap-4 items-end shadow-sm">
+<div class="flex flex-col gap-1">
+<label class="text-[10px] font-bold text-outline uppercase tracking-widest">Tanggal</label>
+<input type="date" id="filter-tanggal" class="border border-outline-variant rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sm-gold outline-none"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-[10px] font-bold text-outline uppercase tracking-widest">Jadwal</label>
+<select id="filter-jadwal" class="border border-outline-variant rounded-lg px-3 py-2 text-sm min-w-[160px] focus:ring-2 focus:ring-sm-gold outline-none">
+<option value="">Semua Jadwal</option>
+<option value="pagi">Pagi</option>
+<option value="siang">Siang</option>
+<option value="malam">Malam</option>
+</select>
+</div>
+</div>
+
+<div id="status-line" class="text-sm text-on-surface-variant italic mb-3"></div>
+
+<div class="bg-surface rounded-xl border border-outline-variant shadow-lg overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Lokasi</th>
+<th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Produk</th>
+<th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Jadwal</th>
+<th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Produksi</th>
+<th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Diterima</th>
+<th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Retur</th>
+<th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Personil</th>
+<th class="p-4 text-xs font-bold text-outline uppercase tracking-widest">Bukti</th>
+</tr>
+</thead>
+<tbody id="table-body" class="divide-y divide-outline-variant"></tbody>
+</table>
+</div>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="supabase-client.js"></script>
+<script src="auth-guard.js"></script>
+<script>
+    let currentProfile = null;
+
+    const namaProduk = { tahanan: 'Tahanan', anggota: 'Anggota', tahanan_propam: 'Tahanan Propam' };
+    const warnaProduk = {
+        tahanan: 'background:#ffe4e6;color:#be123c;',
+        anggota: 'background:#ede9fe;color:#6d28d9;',
+        tahanan_propam: 'background:#ecfccb;color:#4d7c0f;'
+    };
+    const namaMeal = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
+    const warnaMeal = {
+        pagi: 'background:#fef3c7;color:#b45309;',
+        siang: 'background:#e0f2fe;color:#0369a1;',
+        malam: 'background:#e0e7ff;color:#4338ca;'
+    };
+
+    function todayStr() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    async function doLogin() {
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        const errEl = document.getElementById('login-error');
+        const btn = document.getElementById('btn-login');
+        errEl.classList.add('hidden');
+
+        if (!email || !password) {
+            errEl.textContent = 'Email dan password wajib diisi.';
+            errEl.classList.remove('hidden');
+            return;
+        }
+
+        btn.textContent = 'Memproses...';
+        btn.disabled = true;
+
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            btn.textContent = 'Masuk';
+            btn.disabled = false;
+            errEl.textContent = 'Email atau password salah.';
+            errEl.classList.remove('hidden');
+            return;
+        }
+
+        await masukKeDashboard();
+        btn.textContent = 'Masuk';
+        btn.disabled = false;
+    }
+
+    async function masukKeDashboard() {
+        const profile = await getProfile();
+        const errEl = document.getElementById('login-error');
+
+        if (!profile || profile.role !== 'polres') {
+            await supabaseClient.auth.signOut();
+            errEl.textContent = 'Akun ini tidak punya akses ke portal ini.';
+            errEl.classList.remove('hidden');
+            return;
+        }
+
+        currentProfile = profile;
+        document.getElementById('screen-login').classList.add('hidden');
+        document.getElementById('screen-dashboard').classList.remove('hidden');
+        document.getElementById('polres-nama-header').textContent = profile.polres_nama || profile.nama;
+        document.getElementById('filter-tanggal').value = todayStr();
+        loadData();
+    }
+
+    async function doLogout() {
+        await supabaseClient.auth.signOut();
+        window.location.reload();
+    }
+
+    async function loadData() {
+        const tanggal = document.getElementById('filter-tanggal').value;
+        const jadwal = document.getElementById('filter-jadwal').value;
+        const statusLine = document.getElementById('status-line');
+        const tbody = document.getElementById('table-body');
+        statusLine.textContent = 'Memuat data...';
+        tbody.innerHTML = '';
+
+        let query = supabaseClient
+            .from('production_logs')
+            .select('id, product_type, meal_time, qty_produced, input_by_nama, locations(nama)')
+            .eq('tanggal', tanggal);
+
+        if (jadwal) query = query.eq('meal_time', jadwal);
+
+        const { data: pl, error } = await query;
+
+        if (error) {
+            statusLine.textContent = 'Gagal memuat data: ' + error.message;
+            return;
+        }
+
+        if (!pl || pl.length === 0) {
+            statusLine.textContent = 'Belum ada data yang disetujui untuk tanggal ini.';
+            return;
+        }
+
+        const logIds = pl.map(p => p.id);
+        const { data: dl } = await supabaseClient
+            .from('delivery_logs')
+            .select('production_log_id, qty_received, photo_url, gps_lat, gps_lng, submitted_by_nama')
+            .in('production_log_id', logIds);
+
+        const deliveryByLog = {};
+        (dl || []).forEach(d => {
+            if (!deliveryByLog[d.production_log_id]) deliveryByLog[d.production_log_id] = [];
+            deliveryByLog[d.production_log_id].push(d);
+        });
+
+        pl.sort((a, b) => a.locations.nama.localeCompare(b.locations.nama));
+
+        pl.forEach(row => {
+            const deliveries = deliveryByLog[row.id] || [];
+            const totalDiterima = deliveries.reduce((s, d) => s + d.qty_received, 0);
+            const totalRetur = Math.max(0, row.qty_produced - totalDiterima);
+            const namaKurir = [...new Set(deliveries.map(d => d.submitted_by_nama).filter(Boolean))].join(', ') || '—';
+            const lastDelivery = deliveries[deliveries.length - 1];
+
+            const mediaHtml = lastDelivery && lastDelivery.photo_url
+                ? `<div class="flex gap-2">
+                    <a href="${lastDelivery.photo_url}" download target="_blank" class="p-2 rounded-full bg-surface-container border border-outline-variant hover:bg-sm-gold/10 hover:text-sm-gold transition-all" title="Download Foto"><span class="material-symbols-outlined text-sm">download</span></a>
+                    ${lastDelivery.gps_lat ? `<a href="https://www.google.com/maps?q=${lastDelivery.gps_lat},${lastDelivery.gps_lng}" target="_blank" class="p-2 rounded-full bg-surface-container border border-outline-variant hover:bg-primary/10 hover:text-primary transition-all" title="Lihat Lokasi GPS"><span class="material-symbols-outlined text-sm">location_on</span></a>` : ''}
+                   </div>`
+                : '<span class="text-outline-variant text-xs">—</span>';
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-surface-container-low transition-colors';
+            tr.innerHTML = `
+                <td class="p-4 font-bold text-sm-blue">${row.locations.nama}</td>
+                <td class="p-4"><span style="${warnaProduk[row.product_type] || ''}" class="px-2 py-1 rounded text-xs font-bold">${namaProduk[row.product_type]}</span></td>
+                <td class="p-4"><span style="${warnaMeal[row.meal_time] || ''}" class="px-2 py-1 rounded text-xs font-bold">${namaMeal[row.meal_time]}</span></td>
+                <td class="p-4 font-bold">${row.qty_produced}</td>
+                <td class="p-4">${totalDiterima}</td>
+                <td class="p-4 ${totalRetur > 0 ? 'text-error font-bold' : 'text-outline-variant'}">${totalRetur}</td>
+                <td class="p-4 text-xs text-on-surface-variant leading-relaxed">
+                    <div><span class="text-outline">Produksi:</span> ${row.input_by_nama || '—'}</div>
+                    <div><span class="text-outline">Kirim:</span> ${namaKurir}</div>
+                </td>
+                <td class="p-4">${mediaHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        statusLine.textContent = `${pl.length} data ditemukan untuk ${tanggal}${jadwal ? ' — ' + namaMeal[jadwal] : ''}.`;
+    }
+
+    document.getElementById('login-password').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doLogin();
+    });
+    document.getElementById('login-email').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doLogin();
+    });
+
+    (async () => {
+        const profile = await getProfile();
+        if (profile && profile.role === 'polres') {
+            await masukKeDashboard();
+        }
+
+        document.getElementById('filter-tanggal').addEventListener('change', loadData);
+        document.getElementById('filter-jadwal').addEventListener('change', loadData);
+    })();
+</script>
+</body>
+</html>
