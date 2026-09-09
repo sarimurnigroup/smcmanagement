@@ -171,7 +171,7 @@
         if (error) {
             btn.textContent = 'Masuk';
             btn.disabled = false;
-            errEl.textContent = 'Email atau password salah.';
+            errEl.textContent = error.message + ' (kode: ' + (error.status || error.code || '—') + ')';
             errEl.classList.remove('hidden');
             return;
         }
