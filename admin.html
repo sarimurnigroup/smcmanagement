@@ -164,27 +164,6 @@
 <label class="text-[10px] font-bold text-outline uppercase tracking-tighter">Lokasi</label>
 <select class="border-outline-variant rounded-lg font-label-md text-sm px-3 py-2 bg-background focus:ring-primary focus:border-primary min-w-[200px]" id="filter-lokasi">
 <option value="">Semua Lokasi</option>
-<option>Polres Kepulauan Seribu</option>
-<option>Polres Metro Jakarta Pusat</option>
-<option>Polres Metro Jakarta Utara</option>
-<option>Polres Pelabuhan Tanjung Priok</option>
-<option>Polsek Cempaka Putih</option>
-<option>Polsek Cilincing</option>
-<option>Polsek Gambir</option>
-<option>Polsek Johar Baru</option>
-<option>Polsek Kalibaru</option>
-<option>Polsek Kelapa Gading</option>
-<option>Polsek Kemayoran</option>
-<option>Polsek Koja</option>
-<option>Polsek Menteng</option>
-<option>Polsek Muara Baru</option>
-<option>Polsek Pademangan</option>
-<option>Polsek Penjaringan</option>
-<option>Polsek Sawah Besar</option>
-<option>Polsek Senen</option>
-<option>Polsek Sunda Kelapa</option>
-<option>Polsek Tanjung Abang</option>
-<option>Polsek Tanjung Priok</option>
 </select>
 </div>
 <div class="flex flex-col gap-1">
@@ -579,7 +558,19 @@
             });
 
             currentRows.sort((a, b) => a.location_nama.localeCompare(b.location_nama) || a.product_type.localeCompare(b.product_type) || mealOrder[a.meal_time] - mealOrder[b.meal_time]);
+            isiFilterLokasi();
             renderTable();
+        }
+
+        // Dropdown filter Lokasi ditarik dari data database (bukan hardcode), biar selalu
+        // sama persis dengan nama lokasi asli dan lokasi baru otomatis muncul.
+        function isiFilterLokasi() {
+            const select = document.getElementById('filter-lokasi');
+            const dipilih = select.value;
+            const namaUnik = [...new Set(currentRows.map(r => r.location_nama))].sort((a, b) => a.localeCompare(b));
+            select.innerHTML = '<option value="">Semua Lokasi</option>' +
+                namaUnik.map(n => `<option value="${n}">${n}</option>`).join('');
+            if (namaUnik.includes(dipilih)) select.value = dipilih;
         }
 
         function renderTable() {
